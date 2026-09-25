@@ -1,0 +1,21 @@
+# API keys & secrets — TUYỆT ĐỐI không commit
+.env
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+.venv/
+venv/
+env/
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+Thumbs.db
+.DS_Store
+
+# File tạm của VS Code Code Runner
+tempCodeRunnerFile.py
