@@ -5,11 +5,11 @@ from langchain_text_splitters import RecursiveCharacterTextSplitter
 
 NOISE_PATTERNS = [
     r"www\.onthisv\.com",
-    r"Downloaded by .*?gmail\.com\)?",   # dòng "Downloaded by ... (email)"
+    r"Downloaded by .*?gmail\.com\)?",   
     r"Scan to open on Studeersnel",
     r"studeersnel",
-    r"lOMoARcPSD\|?\d+",                 # mã tài liệu kiểu lOMoARcPSD|52676119
-    r"^\s*\d{1,4}\s*$",                  # dòng chỉ chứa số trang, ví dụ "1", "2"
+    r"lOMoARcPSD\|?\d+",                
+    r"^\s*\d{1,4}\s*$",                 
 ]
 NOISE_RE = re.compile("|".join(NOISE_PATTERNS), re.IGNORECASE)
 
@@ -127,7 +127,7 @@ from pinecone import Pinecone, ServerlessSpec
 load_dotenv()
 
 INDEX_NAME = "tu-tuong-hcm-index"
-VECTOR_DIM = 2560          # đo được thực tế ở Bước 2 — không đoán
+VECTOR_DIM = 2560        
 METRIC = "cosine"
 
 
@@ -148,7 +148,6 @@ def create_or_get_index(pc: Pinecone, index_name: str = INDEX_NAME):
             metric=METRIC,
             spec=ServerlessSpec(cloud="aws", region="us-east-1"),
         )
-        # Index mới tạo cần vài giây để sẵn sàng nhận request
         while not pc.describe_index(index_name).status["ready"]:
             time.sleep(1)
         print(f"Đã tạo index mới: {index_name}")
@@ -171,7 +170,7 @@ def upsert_chunks(index, chunks_data: list, batch_size: int = 100):
             "metadata": {
                 "source": c["source"],
                 "chapter": c["chapter"],
-                "text": c["text"],   # lưu text trong metadata để search.py đọc lại được nội dung gốc
+                "text": c["text"],   
             },
         })
 
@@ -190,7 +189,6 @@ if __name__ == "__main__":
     embedder = get_embedding_model("qwen3-embedding:4b")
     check_vector_dimension(embedder)
 
-    # Giờ embed TOÀN BỘ 585 chunk (không chỉ 3 như lúc test)
     data = embed_chunks(embedder, data)
 
     pc = get_pinecone_client()
