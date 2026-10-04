@@ -19,3 +19,10 @@ Thumbs.db
 
 # File tạm của VS Code Code Runner
 tempCodeRunnerFile.py
+
+# Qdrant chế độ nhúng
+qdrant_data/
+.pytest_cache/
+
+# Skill / cài đặt Claude Code (cài lại bằng: uipro init --ai claude)
+.claude/
