@@ -5,11 +5,11 @@ from langchain_text_splitters import RecursiveCharacterTextSplitter
 
 NOISE_PATTERNS = [
     r"www\.onthisv\.com",
-    r"Downloaded by .*?gmail\.com\)?",   
+    r"Downloaded by .*?gmail\.com\)?",
     r"Scan to open on Studeersnel",
     r"studeersnel",
-    r"lOMoARcPSD\|?\d+",                
-    r"^\s*\d{1,4}\s*$",                 
+    r"lOMoARcPSD\|?\d+",
+    r"^\s*\d{1,4}\s*$",
 ]
 NOISE_RE = re.compile("|".join(NOISE_PATTERNS), re.IGNORECASE)
 
@@ -72,23 +72,18 @@ def build_chunks_with_metadata(chunks, source_name="Giao_trinh_Tu_tuong_HCM.pdf"
         detected_chapter = extract_chapter(chunk.page_content)
         if detected_chapter is not None:
             current_chapter = detected_chapter
+        page = chunk.metadata.get("page")   # PyPDFLoader đánh số từ 0
         result.append({
             "chunk_id": f"chunk_{i:03d}",
             "source": source_name,
-            "chapter": current_chapter,   
+            "chapter": current_chapter,
+            "page": page + 1 if page is not None else None,   # trang 1-based để trích dẫn
             "text": chunk.page_content,
         })
     return result
 
 
-#if __name__ == "__main__":
-#    docs = load_document("Giao_trinh_Tu_tuong_HCM.pdf")
-#    chunks = chunk_documents(docs)
-#    data = build_chunks_with_metadata(chunks)
-#    print(f"Tổng số chunk: {len(data)}")
-#    print(data[500])
-
-#code embedding 
+#code embedding
 from langchain_ollama import OllamaEmbeddings
 
 def get_embedding_model(model_name: str = "qwen3-embedding:4b"):
@@ -118,66 +113,62 @@ def embed_chunks(embedder, chunks_data: list, batch_size: int = 32):
     return chunks_data
 
 
-#tạo index + upsert vào Pinecone
+#tạo collection + upsert vào Qdrant
 import os
-import time
 from dotenv import load_dotenv
-from pinecone import Pinecone, ServerlessSpec
+from qdrant_client import QdrantClient, models
 
 load_dotenv()
 
-INDEX_NAME = "tu-tuong-hcm-index"
-VECTOR_DIM = 2560        
-METRIC = "cosine"
+COLLECTION = os.getenv("QDRANT_COLLECTION", "tu_tuong_hcm")
+DISTANCE = models.Distance.COSINE
 
 
-def get_pinecone_client():
-    api_key = os.getenv("PINECONE_API_KEY")
-    if not api_key:
-        raise ValueError("Chưa set PINECONE_API_KEY trong file .env")
-    return Pinecone(api_key=api_key)
+def get_qdrant_client() -> QdrantClient:
+    path = os.getenv("QDRANT_PATH")
+    if path:
+        return QdrantClient(path=path)   # chế độ nhúng, không cần Docker
+    return QdrantClient(url=os.getenv("QDRANT_URL", "http://localhost:6333"),
+                        api_key=os.getenv("QDRANT_API_KEY"))
 
 
-def create_or_get_index(pc: Pinecone, index_name: str = INDEX_NAME):
-    existing_indexes = [idx["name"] for idx in pc.list_indexes()]
-
-    if index_name not in existing_indexes:
-        pc.create_index(
-            name=index_name,
-            dimension=VECTOR_DIM,
-            metric=METRIC,
-            spec=ServerlessSpec(cloud="aws", region="us-east-1"),
-        )
-        while not pc.describe_index(index_name).status["ready"]:
-            time.sleep(1)
-        print(f"Đã tạo index mới: {index_name}")
-    else:
-        print(f"Index '{index_name}' đã tồn tại, dùng lại.")
-
-    return pc.Index(index_name)
-
-
-def upsert_chunks(index, chunks_data: list, batch_size: int = 100):
+def create_or_recreate_collection(client: QdrantClient, dim: int, collection: str = COLLECTION):
     """
-    chunks_data: list dict có 'chunk_id', 'embedding', 'text', 'source', 'chapter'
+    Ingest lại từ đầu mỗi lần chạy: số chunk/ID có thể đổi khi sửa clean/chunk,
+    giữ collection cũ sẽ để lại point "mồ côi" lẫn vào kết quả search.
+    """
+    if client.collection_exists(collection):
+        client.delete_collection(collection)
+        print(f"Đã xoá collection cũ: {collection}")
+    client.create_collection(
+        collection_name=collection,
+        vectors_config=models.VectorParams(size=dim, distance=DISTANCE),
+    )
+    # Index payload để lọc theo chương nhanh (tương đương metadata filter của Pinecone).
+    client.create_payload_index(collection, field_name="chapter",
+                                field_schema=models.PayloadSchemaType.KEYWORD)
+    print(f"Đã tạo collection: {collection} (dim={dim}, distance={DISTANCE.value})")
+
+
+def upsert_chunks(client: QdrantClient, chunks_data: list, batch_size: int = 100,
+                  collection: str = COLLECTION):
+    """
+    chunks_data: list dict có 'chunk_id', 'embedding', 'text', 'source', 'chapter', 'page'
     (kết quả từ embed_chunks ở Bước 2).
+    Qdrant chỉ nhận ID dạng số nguyên hoặc UUID → dùng số thứ tự, chunk_id để trong payload.
     """
-    vectors = []
-    for c in chunks_data:
-        vectors.append({
-            "id": c["chunk_id"],
-            "values": c["embedding"],
-            "metadata": {
-                "source": c["source"],
-                "chapter": c["chapter"],
-                "text": c["text"],   
-            },
-        })
+    points = [
+        models.PointStruct(
+            id=i,
+            vector=c["embedding"],
+            payload={k: c[k] for k in ("chunk_id", "source", "chapter", "page", "text")},
+        )
+        for i, c in enumerate(chunks_data, start=1)
+    ]
 
-    for i in range(0, len(vectors), batch_size):
-        batch = vectors[i : i + batch_size]
-        index.upsert(vectors=batch)
-        print(f"Đã upsert {min(i + batch_size, len(vectors))}/{len(vectors)} vectors")
+    for i in range(0, len(points), batch_size):
+        client.upsert(collection_name=collection, points=points[i : i + batch_size], wait=True)
+        print(f"Đã upsert {min(i + batch_size, len(points))}/{len(points)} points")
 
 
 if __name__ == "__main__":
@@ -187,14 +178,13 @@ if __name__ == "__main__":
     print(f"Tổng số chunk: {len(data)}")
 
     embedder = get_embedding_model("qwen3-embedding:4b")
-    check_vector_dimension(embedder)
+    dim = check_vector_dimension(embedder)   # đo thật thay vì hardcode 2560
 
     data = embed_chunks(embedder, data)
 
-    pc = get_pinecone_client()
-    index = create_or_get_index(pc)
-    upsert_chunks(index, data)
+    client = get_qdrant_client()
+    create_or_recreate_collection(client, dim)
+    upsert_chunks(client, data)
+    print(f"Collection '{COLLECTION}' hiện có {client.count(COLLECTION).count} points")
 
     print("Hoàn tất ingest pipeline!")
-
-
