@@ -31,12 +31,16 @@ export function buildTrace(r) {
     steps.push({ id: '2', name: 'Retrieval guard', status: 'skip', detail: 'Không chạy' })
   } else {
     const top = r.retrieval_top ?? r.sources?.[0]?.rerank_score
+    const cos = r.retrieval_top_cos   // câu trả lời cũ trong lịch sử chưa có trường này
+    // Câu nối tiếp ("nói rõ hơn ý 2") được viết lại thành câu đầy đủ trước khi tìm
+    const rewritten = r.search_question ? ` · tìm theo: “${r.search_question}”` : ''
     steps.push({
       id: '2',
       name: 'Retrieval guard',
       status: { pass: 'ok', partial: 'warn', refuse: 'block' }[r.retrieval],
-      detail: `${r.retrieval}${top != null ? ` · P(yes) cao nhất ${top.toFixed(3)}` : ''}`,
-      time: sec((t.embed_qdrant_s || 0) + (t.rerank_s || 0)),
+      detail: `${r.retrieval}${top != null ? ` · P(yes) cao nhất ${top.toFixed(3)}` : ''}`
+        + `${cos != null ? ` · cosine ${cos.toFixed(3)}` : ''}${rewritten}`,
+      time: sec((t.rewrite_s || 0) + (t.embed_qdrant_s || 0) + (t.rerank_s || 0)),
     })
   }
 

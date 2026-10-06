@@ -84,10 +84,15 @@ def test_input_policy(label, cats, policy):
 # ---------------------------------------------------------------------
 # Lớp 2 — retrieval_guard
 # ---------------------------------------------------------------------
-@pytest.mark.parametrize("top,decision", [(0.9, "pass"), (0.5, "pass"), (0.4, "partial"),
-                                          (0.3, "partial"), (0.29, "refuse"), (0.01, "refuse")])
-def test_retrieval_guard(top, decision):
-    assert retrieval_guard([{"rerank_score": top}, {"rerank_score": 0.0}]) == decision
+@pytest.mark.parametrize("top,cos,decision", [
+    (0.99, 0.8, "pass"), (0.9, 0.45, "pass"),                          # đúng ngưỡng vẫn pass
+    (0.89, 0.8, "partial"), (0.5, 0.40, "partial"), (0.99, 0.44, "partial"),
+    (0.49, 0.8, "refuse"), (0.01, 0.8, "refuse"),                      # P(yes) thấp
+    (0.982, 0.39, "refuse"), (0.867, 0.201, "refuse"),                 # "đội bóng đoàn kết", "gián có hại"
+])
+def test_retrieval_guard(top, cos, decision):
+    assert retrieval_guard([{"rerank_score": top, "cosine": cos},
+                            {"rerank_score": 0.0, "cosine": 0.9}]) == decision   # chỉ xét chunk đầu
 
 
 def test_retrieval_guard_empty():

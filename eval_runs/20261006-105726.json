@@ -1,0 +1,83 @@
+{
+  "config": {
+    "gemini_model": "gemini-3.8-flash",
+    "judge_model": "gemini-3.8-flash",
+    "CANDIDATES": 10,
+    "TOP_N": 4,
+    "MIN_TOP": 0.9,
+    "MIN_COS": 0.45,
+    "PARTIAL_BAND": 0.5,
+    "PARTIAL_COS": 0.4
+  },
+  "rows": [
+    {
+      "question": "Quan điểm của Hồ Chí Minh về đại đoàn kết toàn dân tộc?",
+      "expect": "answer",
+      "reference": "",
+      "status": "answered",
+      "answer": "Theo tư tưởng Hồ Chí Minh, quan điểm về đại đoàn kết dân tộc bao gồm các nội dung sau:\n\n- **Ý nghĩa chiến lược:** Đại đoàn kết dân tộc là vấn đề có ý nghĩa chiến lược, cơ bản, nhất quán và lâu dài, xuyên suốt tiến trình cách mạng [Chương V, trang 68]. Để cách mạng thành công và thành công đến nơi, không chỉ có tinh thần yêu nước mà phải tập hợp được tất cả mọi lực lượng có thể tập hợp, xây dựng khối đại đoàn kết dân tộc bền vững [Chương V, trang 68].\n- **Chủ thể và bản chất:** Đại đoàn kết dân tộc thực chất là đại đoàn kết toàn dân [Chương V, trang 69]. Chủ thể của khối đại đoàn kết là \"dân\" và \"nhân dân\", bao gồm \"mọi con dân nước Việt\", \"mỗi một người con Rồng cháu Tiên\", không phân biệt dân tộc đa số hay thiểu số, có tín ngưỡng hay không, không phân biệt già trẻ, gái trai, giàu nghèo, quý tiện [Chương V, trang 69].\n- **Hình thức tổ chức:** Biểu hiện cụ thể của khối đại đoàn kết dân tộc là Mặt trận dân tộc thống nhất [Chương V, trang 83].\n- **Sức mạnh và sự kết hợp:** Kết hợp đoàn kết dân tộc với đoàn kết quốc tế tạo thành sức mạnh tổng hợp, là cội nguồn sức mạnh làm nên mọi thắng lợi của cách mạng Việt Nam [Chương V, trang 83].\n- **Ý nghĩa lý luận:** Tư tưởng đại đoàn kết dân tộc của Hồ Chí Minh là một đóng góp quan trọng vào kho tàng kinh nghiệm và lý luận cách mạng thế giới [Chương V, trang 83].",
+      "contexts": [
+        ". Sau khi tìm thấy con đường cứu nước và trước những đòi hỏi khách quan của cách mạng, Hồ Chí Minh đã sớm đưa ra quan điểm về Mặt trận dân tộc thống nhất – biểuhiện cụ thể của khối đại đoàn kết dân tộc với một hệ thống những quan điểm khá hoàn chỉnh về công tác mặt trận, Được Đảng Cộng sản Việt Nam tiếp thu và đưa vào thực tiễn ở Việt Nam, Kết hợp đoàn kết dân tộc với đoàn kết quốc tế, tạo thành sức mạnh tổng hợp, làm nên mọi thắng lợi của cách mạng Việt Nam. Chính vì vậy, tư tưởng đại đoàn kết dân tộc của Hồ Chí Minh là một đóng góp quan trọng vào kho tàng kinh nghiệm cách mạng thế giới, àm",
+        "I. TƯ TƯỞNG HỒ CHÍ MINH VỀ ĐẠI ĐOÀN KẾT DÂN TỘC 1. Vai trò của đại đoàn kết dân tộc trong sự nghiệp cách mạng a. Đại đoàn kết dân tộc là vấn đề có ý nghĩa chiến lược trong sự nghiệp cách mạng Hồ Chí Minh chỉ ra rằng, trong thời đại mới, để đánh bại các thế lực đế quốc, thực dân nhằm giải phóng dân tộc, giải phóng giai cấp và giải phóng loài người, nếu chỉ có tinh thần yêu nước thì chưa đủ; cách mạng muốn thành công và thành công đến nơi, phải tập hợp được tất cả mọi lực lượng có thể tập hợp, xây dựng được khối đại đoàn kết dân tộc bền vững. Chính vì vậy, trong tư tưởng Hồ Chí Minh, đại đoàn kết dân tộc là vấn để có ý nghĩa chiến lược, cơ bản, nhất quán và lâu dài, xuyên suốt tiến trình cách mạng",
+        ". Các khái niệm này có biên độ tất rộng lớn. Hồ Chí Minh thường dùng khái niệm này để chỉ “mọi con dân nước Việt”, “mỗi một người con Rồng cháu Tiên”, không phân biệt dân tộc đa số hay thiểu số, có tín ngưỡng hay không tín ngưỡng, không phân biệt “già trẻ, gái, trai, giàu nghèo, quý tiện”. Như vậy, dân và nhân dân trong tư tưởng Hồ Chí Minh vừa được hiểu với tư cách là mỗi con người Việt Nam cụ thể, vừa là một tập hợp đông đảo quần chúng nhân dân, với những mối liên hệ cả quá khứ và hiện tại, họ là chủ thể của khối đại đoàn kết dân tộc và đại đoàn kết dân tộc thực chất là đại đoàn kết toàn dân.",
+        ". KẾT LUẬN Đại đoàn kết dân tộc là một chiến lược cách mạng được Hồ Chí Minh để ra từ rất sớm, trở thành tư tưởng chỉ đạo xuyên suốt tiến trình cách mạng Việt Nam, là cội nguồn sức mạnh làm nên mọi thắng lợi của cách mạng Việt nam, một đóng góp quan trọng vào lý luận cách mạng thế giới. Trước Hồ Chí Minh, các nhà sáng lập chủ nghĩa Mac – Lênin chưa đề cập vấn đề đại đoàn kết dân tộc. Do đặc điểm của thời đại mình, Mac và Ăngghen chỉ mới kêu gọi đoàn kết giai cấp vô sản toàn thế giới và thực hiện liên minh công nông (sau công xã Paris 1871) trong đấu tranh lật đổ chế độ tư bản chủ nghĩa"
+      ],
+      "blocked_by": null,
+      "retrieval": "pass",
+      "retrieval_top": 0.988,
+      "retrieval_top_cos": 0.779,
+      "scores": {
+        "faithfulness": 0.9090909090909091,
+        "answer_relevancy": 0.8924996613444919,
+        "context_relevance": 1.0
+      },
+      "score_errors": {}
+    },
+    {
+      "question": "Thực chất của vấn đề dân tộc thuộc địa theo Hồ Chí Minh là gì?",
+      "expect": "answer",
+      "reference": "",
+      "status": "answered",
+      "answer": "Theo Hồ Chí Minh, thực chất của vấn đề dân tộc thuộc địa là:\n\n- Vấn đề đấu tranh chống chủ nghĩa thực dân, xóa bỏ ách thống trị, áp bức, bóc lột của nước ngoài, giải phóng dân tộc, giành độc lập dân tộc, thực hiện quyền dân tộc tự quyết, thành lập nhà nước dân tộc độc lập [Chương II, trang 22].",
+      "contexts": [
+        "I.TƯ TƯỞNG HỒ CHÍ MINH VỀ VẤN ĐỀ DÂN TỘC 1. Vấn đề dân tộc thuộc địa a. Thực chất của vấn đề dân tộc thuộc địa - Đấu tranh chống chủ nghĩa thực dân, giải phóng dân tộc Hồ Chí Minh không bàn về vấn đề dân tộc nói chung. Xuất phát từ nhu cầu khách quan của dân tộc Việt Nam, đặc điểm của thời đại, Người dành sự quan tâm đến các thuộc địa, vạch ra thực chất của vấn đề dân tộc ở thuộc địa là vấn đề đấu tranh chống chủ nghĩa thực dân, xóa bỏ ách thống trị, áp bức, bóc lột của nước ngoài, giải phóng dân tộc, giành độc lập dân tộc, thực hiện quyền dân tộc tự quyết, thành lập nhà nước dân tộc độc lập. Hồ Chí Minh viết nhiều tác phẩm như: Tâm địa thực dân, Bình đẳng, Vực thẳm thuộc địa, Công cuộc khai hóa giết người…, tố cáo chủ nghĩa thực dân, vạch trần cái gọi là “khai hóa văn minh” của chúng",
+        ". Hồ Chí Minh luôn luôn phân biệt rõ bọn thực dân xâm lược với nhân dân các nước tư bản chủ nghĩa. Người kêu gọi nhân dân các nước phản đối chiến tranh xâm lược thuộc địa, ủng hộ cuộc đấu tranh giành độc lập dân tộc của nhân dân Việt nam. Yêu cầu bức thiết của nhân dân các nước thuộc địa là độc lập dân tộc. Trong phong trào cộng sản quốc tế, có quan điểm cho rằng “vấn đề cơ bản của cách mạng thuộc địa là vấn đề nông dân” và chủ trương nhấn mạnh vấn đề ruộng đất, nhấn mạnh đấu tranh giai cấp. Ở các nước thuộc địa, nông dân là lực lượng đông đảo nhất. Thực dân Pháp thống trị và bóc lột nhân dân Việt Nam thì chủ yếu là thống trị và bóc lột nông dân. Nông dân là nạn nhân chính của các chính sách thuộc địa, bóc lột tô thuế và cướp đoạt ruộng đất",
+        ". Người chỉ rõ tầm quan trọng đặc biệt của độc lập dân tộc trong tiến trình đi lên chủ nghĩa xã hội, về sự tự thân vận động của công cuộc đấu tranh giải phóng của nhân dân các nước thuộc địa và phụ thuộc, về mối quan hệ giữa cách mạng giải phóng dân tộc thuộc địa với cách mạng vô sản ở chính quốc, về khả năng cách mạng giải phóng dân tộc thuộc địa nổ ra và giành thắng lợi trước cách mạng vô sản chính quốc. Từ nghiên cứu lý luận, áp dụng vào những điều kiện cụ thể, Hồ Chí Minh đã hình thành một hệ thống các luận điểm chính xác, đúng đắn về vấn đề dân tộc và cách mạng giải phóng dân tộc ở thuộc địa, góp phần làm phong phú thêm kho tàng lý luận của chủ nghĩa Mac – Lênin",
+        ". Hồ Chí Minh đã giải quyết đúng đắn vấn đề “làm cách nào để giải phóng các dân tộc thuộc địa”; Người đã xác định chủ nghĩa đế quốc là kẻ thù lớn nhất của các dân tộc bị áp bức và để chiến thắng chủ nghĩa đế quốc, cần phải thực hiện “đại đoàn kết”, “đại hòa hợp”. Đây là đóng góp to lớn của Hồ Chí Minh. Giá trị tư tưởng Hồ Chí Minh đối với thế giới còn ở chỗ, ngay từ rất sớm, Người đã nhận thức đúng sự biến chuyển của thời đại. Trên cơ sở nắm vững đặc điểm thời đại, Hồ Chí Minh đã hoạt động không mệt mỏi để gắn cách mạng Việt Nam với cách mạng thế giới"
+      ],
+      "blocked_by": null,
+      "retrieval": "pass",
+      "retrieval_top": 0.999,
+      "retrieval_top_cos": 0.841,
+      "scores": {
+        "faithfulness": 1.0,
+        "answer_relevancy": 0.9548290874122826,
+        "context_relevance": 1.0
+      },
+      "score_errors": {}
+    },
+    {
+      "question": "Hồ Chí Minh quan niệm thế nào về độc lập dân tộc gắn liền với chủ nghĩa xã hội?",
+      "expect": "answer",
+      "reference": "",
+      "status": "answered",
+      "answer": "Theo quan niệm của Hồ Chí Minh, độc lập dân tộc gắn liền với chủ nghĩa xã hội thể hiện qua các nội dung sau:\n\n- Con đường cứu nước của Hồ Chí Minh khác với con đường của ông cha (gắn độc lập dân tộc với chủ nghĩa phong kiến hoặc tư bản), đó là con đường độc lập dân tộc gắn liền với chủ nghĩa xã hội; có sự gắn bó thống nhất giữa dân chủ và giai cấp, dân tộc và quốc tế, độc lập dân tộc và chủ nghĩa xã hội [Chương II, trang 25].\n- Chỉ có chủ nghĩa xã hội, chủ nghĩa cộng sản mới giải phóng được các dân tộc bị áp bức và những người lao động trên thế giới khỏi ách nô lệ [Chương II, trang 25].\n- Độc lập dân tộc gắn liền với chủ nghĩa xã hội nhằm mục đích giải phóng dân tộc, giải phóng giai cấp và giải phóng con người [Chương Mở đầu, trang 2], [Chương II, trang 25].\n- Hồ Chí Minh chỉ rõ: \"nước được độc lập mà dân không được hưởng hạnh phúc tự do, thì độc lập cũng chẳng có nghĩa lý gì\". Do đó, sau khi giành được độc lập, phải tiến lên xây dựng chủ nghĩa xã hội để làm cho dân giàu, nước mạnh, mọi người được sung sướng, tự do; bảo đảm quyền làm chủ của người lao động và sự phát triển hài hòa giữa độc lập dân tộc với tự do, hạnh phúc của con người [Chương II, trang 25].\n- Đi lên chủ nghĩa xã hội sau khi giành được độc lập dân tộc là quy luật tiến hóa trong quá trình phát triển của xã hội loài người, và chỉ có chủ nghĩa xã hội mới đáp ứng được khát vọng độc lập, dân chủ, cơm no áo ấm cho nhân dân [Chương III, trang 50].\n- Về mối quan hệ: Độc lập dân tộc là điều kiện tiên quyết để thực hiện chủ nghĩa xã hội, và chủ nghĩa xã hội là cơ sở bảo đảm vững chắc cho độc lập dân tộc [Chương III, trang 50].",
+      "contexts": [
+        ". b. Giải phóng dân tộc là vấn đề trên hết, trước hết; độc lập dân tộc gắn liền với chủ nghĩa xã hội Khác với các con đường cứu nước của ông cha, gắn độc lập dân tộc với chủ nghĩa phong kiến hoặc chủ nghĩa tư bản, con đường cứu nước của Hồ Chí Minh là độc lập dân tộc gắn với chủ nghĩa xã hội. Năm 1920, ngay khi quyết định phương hướng giải phóng và phát triển dân tộc theo con đường của cách mạng vô sản, Ở Hồ Chí Minh đã có sự gắn bó thống nhất giữa dân chủ và giai cấp, dân tộc và quốc tế, độc lập dân tộc và chủ nghĩa xã hội. Năm 1960, Người nói: “Chỉ có chủ nghĩa xã hội, chủ nghĩa cộng sản mới giải phóng được các dân tộc bị áp bức và những người lao động trên thế giới khỏi ách nô lệ”",
+        ". Đọc lập dân tộc và chủ nghĩa xã hội cũng chính là mục tiêu cao cả, bất biến của toàn Đảng, toàn dân ta. Dưới sự lãnh đạo của Đảng, nhân dân ta đã đấu tranh giành được đọc lập dân tộc, từng bước quá độ dần lên chủ nghĩa xã hội. Trong điều kiện nước ta, độc lập dân tộc phải gắn liền với chủ nghĩa xã hội, sau khi giành được độc lập dân tộc, phải đi lên chủ nghĩa xã hội, vì đó là quy luật tiến hóa trong quá trình phát triển của xã hội loài người. Chỉ có chủ nghĩa xã hội mới đáp ứng được khát vọng của toàn dân tộc: độc lập cho dân tộc, dân chủ cho nhân dân, cơm no áo ấm cho mọi người dân Việt Nam. Thực tiễn phát triển đất nước cho thấy, độc lập dân tộc là điều kiện tiên quyết để thực hiện chủ nghĩa xã hội và chủ nghĩa xã hội là cơ sở bảo đảm vững chắc cho độc lập dân tộc",
+        ". Là một hệ thống lý luận, tư tưởng Hồ Chí Minh có cấu trúc lôgic chặt chẽ và có hạt nhân cốt lõi, đó là tư tưởng về độc lập dân tộc, dân chủ và chủ nghĩa xã hội, độc lập dân tộc gắn liền với chủ nghĩa xã hội nhằm giải phóng dân tộc, giải phóng giai cấp và giải phóng con người. 2.Đối tượng và nhiệm vụ của môn học Tư tưởng Hồ Chí Minh a.Đối tượng nghiên cứu Đối tượng nghiên cứu của môn học Tư tưởng Hồ Chí Minh bao gồm hệ thống các quan điểm, quan niệm, lý luận về cách mạng Việt Nam trong dòng chảy của thời đại mới mà cốt lõi là tư tưởng về độc lập dân tộc gắn liền với chủ nghĩa xã hội. Các quan điểm cơ bản của hệ thống tư",
+        ". Tư tưởng Hồ Chí Minh vừa phản ánh quy luật khách quan của sự nghiệp giải phóng dân tộc trong thời đại chủ nghĩa đế quốc, vừa phản ánh mối quan hệ khắng khít giữa mục tiêu giải phóng dân tộc với mục tiêu giải phóng giai cấp và giải phóng con người. Chỉ có xóa bỏ tận gốc tình trạng áp bức, bóc lột; thiết lập nhà nước thực sự của dân, do dân, vì dân mới bảo đảm cho người lao động có quyền làm chủ, mới thực hiện được sự phát triển hài hòa giữa cá nhân và xã hội, giữa độc lập dân tộc với tự do và hạnh phúc của con người. Hồ Chí Minh nói: “nước được độc lập mà dân không được hưởng hạnh phúc tự do, thì độc lập cũng chẳng có nghĩa lý gì”. Do đó, sau khi giành được độc lập, phải tiến lên xây dựn chủ nghĩa xã hội, làm cho dân giàu, nước mạnh, mọi người được sung sướng, tự do"
+      ],
+      "blocked_by": null,
+      "retrieval": "pass",
+      "retrieval_top": 0.997,
+      "retrieval_top_cos": 0.743,
+      "scores": {
+        "faithfulness": 1.0,
+        "answer_relevancy": 0.9332932814904447,
+        "context_relevance": 1.0
+      },
+      "score_errors": {}
+    }
+  ]
+}

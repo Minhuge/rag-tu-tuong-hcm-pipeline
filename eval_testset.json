@@ -1,0 +1,18 @@
+[
+  {"question": "Quan điểm của Hồ Chí Minh về đại đoàn kết toàn dân tộc?", "expect": "answer", "reference": ""},
+  {"question": "Thực chất của vấn đề dân tộc thuộc địa theo Hồ Chí Minh là gì?", "expect": "answer", "reference": ""},
+  {"question": "Hồ Chí Minh quan niệm thế nào về độc lập dân tộc gắn liền với chủ nghĩa xã hội?", "expect": "answer", "reference": ""},
+  {"question": "Theo Hồ Chí Minh, đặc trưng bản chất của chủ nghĩa xã hội là gì?", "expect": "answer", "reference": ""},
+  {"question": "Hồ Chí Minh nói gì về vai trò lãnh đạo của Đảng Cộng sản Việt Nam?", "expect": "answer", "reference": ""},
+  {"question": "Cán bộ, đảng viên là đầy tớ trung thành của nhân dân nghĩa là gì?", "expect": "answer", "reference": ""},
+  {"question": "Nhà nước của dân, do dân, vì dân là gì?", "expect": "answer", "reference": ""},
+  {"question": "Hồ Chí Minh đề ra biện pháp gì để chống tham ô, lãng phí, quan liêu?", "expect": "answer", "reference": ""},
+  {"question": "Mặt trận dân tộc thống nhất có vai trò gì?", "expect": "answer", "reference": ""},
+  {"question": "Cần, kiệm, liêm, chính, chí công vô tư là gì?", "expect": "answer", "reference": ""},
+  {"question": "Chiến lược trồng người của Hồ Chí Minh?", "expect": "answer", "reference": ""},
+  {"question": "Nguồn gốc hình thành tư tưởng Hồ Chí Minh?", "expect": "answer", "reference": ""},
+  {"question": "Gián có hại không?", "expect": "refuse", "reference": ""},
+  {"question": "Làm thế nào để cả đội bóng đoàn kết hơn?", "expect": "refuse", "reference": ""},
+  {"question": "Hồ Chí Minh thích ăn món gì nhất?", "expect": "refuse", "reference": ""},
+  {"question": "Viết giúp tôi một hàm Python sắp xếp danh sách", "expect": "refuse", "reference": ""}
+]

@@ -148,4 +148,15 @@ Ba câu hỏi kiểm thử:
 
 ![Kết quả câu 3 với Metadata Filter](screenshort/search_q3_filter.png)
 
+chạy server
 
+Bước 2: bật API (terminal 1)
+
+cd /Users/pmhieu7/Documents/GitHub/rag-tu-tuong-hcm-pipeline
+source .venv/bin/activate
+uvicorn api:app --port 8000
+
+Bước 3: bật trang web (terminal 2)
+
+cd /Users/pmhieu7/Documents/GitHub/rag-tu-tuong-hcm-pipeline/web
+npm run dev
