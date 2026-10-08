@@ -1,15 +1,15 @@
 """
 Test các lớp guardrail thuần code (không nạp model): 1a, input_policy, 2, 3, 4c.
 
-Chạy:  pytest -q test_guards.py
+Chạy:  pytest -q tests/test_guards.py
 """
 import pytest
 
-from guards import (
+from rag.guards import (
     MAX_QUESTION_CHARS, REFUSAL_TEXT, GuardResult, basic_input_check, build_context,
     build_system_prompt, check_citations, input_policy, is_refusal, parse_guard_output, source_label,
 )
-from search_rerank import retrieval_guard
+from rag.search_rerank import retrieval_guard
 
 
 # ---------------------------------------------------------------------

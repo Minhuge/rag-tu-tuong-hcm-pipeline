@@ -1,14 +1,14 @@
 """
 Test db.py trên database tạm (SQLite, hoặc Postgres nếu đặt TEST_DATABASE_URL — xem conftest.py).
 
-Chạy:  pytest -q test_db.py
+Chạy:  pytest -q tests/test_db.py
 """
 import pytest
 from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-import db
+from app import db
 
 A, B = 1, 2      # id của hai người dùng tạo sẵn trong fixture
 

@@ -1,7 +1,7 @@
 """
 Test auth.py và các route /auth/* trên database tạm (xem conftest.py) — không nạp model, không gọi Gemini.
 
-Chạy:  pytest -q test_auth.py
+Chạy:  pytest -q tests/test_auth.py
 """
 from datetime import timedelta
 
@@ -11,9 +11,9 @@ from fastapi.testclient import TestClient
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-import api
-import auth
-import db
+from app import main as api
+from app import auth
+from app import db
 
 
 @pytest.fixture(autouse=True)

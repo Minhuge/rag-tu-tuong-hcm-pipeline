@@ -19,7 +19,7 @@ import torch
 from pydantic import BaseModel
 from transformers import AutoModelForCausalLM, AutoTokenizer
 
-from reranker import pick_device
+from rag.reranker import pick_device
 
 # =====================================================================
 # LỚP 1a — kiểm tra cơ bản (không dùng model, ~0 ms)

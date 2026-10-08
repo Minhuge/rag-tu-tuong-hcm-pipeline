@@ -1,5 +1,5 @@
 """
-Đăng nhập: băm mật khẩu, JWT, refresh token và dependency get_current_user cho api.py.
+Đăng nhập: băm mật khẩu, JWT, refresh token và dependency get_current_user cho các router trong app/routers/.
 
   access token  : JWT ký HS256 bằng JWT_SECRET, sống ACCESS_TOKEN_MINUTES phút, nằm trong cookie httpOnly
                   "access_token" (Path=/) → trình duyệt tự gửi kèm mọi request, JavaScript không đọc được.
@@ -38,8 +38,8 @@ from sqlalchemy import delete, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-import db
-from db import RefreshToken, User, normalize_email, user_dict, utcnow
+from app import db
+from app.db import RefreshToken, User, normalize_email, user_dict, utcnow
 
 load_dotenv()
 

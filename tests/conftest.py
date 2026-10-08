@@ -6,15 +6,15 @@ Kiểm tra trên Postgres thật: đặt TEST_DATABASE_URL tới một database 
 (mọi bảng trong đó bị xoá trước mỗi test), vd.
 
   docker exec postgres createdb -U hcm hcm_chat_test
-  TEST_DATABASE_URL=postgresql+psycopg://hcm:mật_khẩu@localhost:5432/hcm_chat_test pytest -q test_db.py test_api.py test_auth.py
+  TEST_DATABASE_URL=postgresql+psycopg://hcm:mật_khẩu@localhost:5432/hcm_chat_test pytest -q tests/test_db.py tests/test_api.py tests/test_auth.py
 """
 import os
 
 import pytest
 from sqlalchemy import create_engine, event
 
-import auth
-import db
+from app import auth
+from app import db
 
 
 @pytest.fixture

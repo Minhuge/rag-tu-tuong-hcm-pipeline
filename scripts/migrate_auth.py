@@ -7,17 +7,17 @@ Nâng database PostgreSQL tạo trước khi có đăng nhập. Chạy lại nhi
      bỏ NOT NULL, giữ nguyên dữ liệu. Muốn xoá hẳn: ALTER TABLE conversations DROP COLUMN client_id;
 
 Lần đầu:
-  python migrate_auth.py                            # bước 1, báo chưa có quản trị viên
-  python create_user.py admin@example.com --admin
-  python migrate_auth.py                            # bước 2–3
-Có nhiều quản trị viên → chọn người nhận:  python migrate_auth.py --owner admin@example.com
+  python -m scripts.migrate_auth                            # bước 1, báo chưa có quản trị viên
+  python -m scripts.create_user admin@example.com --admin
+  python -m scripts.migrate_auth                            # bước 2–3
+Có nhiều quản trị viên → chọn người nhận:  python -m scripts.migrate_auth --owner admin@example.com
 """
 import argparse
 import sys
 
 from sqlalchemy import inspect, text
 
-import db
+from app import db
 
 
 def find_owner(conn, email: str | None) -> tuple[int, str] | None:
@@ -29,7 +29,7 @@ def find_owner(conn, email: str | None) -> tuple[int, str] | None:
         return tuple(row)
     admins = conn.execute(text("SELECT id, email FROM users WHERE is_admin ORDER BY id")).all()
     if len(admins) > 1:
-        sys.exit("Có nhiều quản trị viên → chọn một: python migrate_auth.py --owner <email>\n  "
+        sys.exit("Có nhiều quản trị viên → chọn một: python -m scripts.migrate_auth --owner <email>\n  "
                  + "\n  ".join(email for _, email in admins))
     return tuple(admins[0]) if admins else None
 
@@ -60,7 +60,7 @@ def main():
             owner = find_owner(c, args.owner)
             if owner is None:
                 sys.exit(f"Còn {orphans} cuộc trò chuyện chưa có chủ nhưng chưa có quản trị viên. Chạy:\n"
-                         "  python create_user.py <email> --admin\n  python migrate_auth.py")
+                         "  python -m scripts.create_user <email> --admin\n  python -m scripts.migrate_auth")
             c.execute(text("UPDATE conversations SET user_id = :u WHERE user_id IS NULL"), {"u": owner[0]})
             print(f"Bước 2: đã gán {orphans} cuộc trò chuyện cũ cho #{owner[0]} {owner[1]}")
         else:

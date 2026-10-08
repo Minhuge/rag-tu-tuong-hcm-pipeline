@@ -1,5 +1,7 @@
 # Thay đổi: log guardrail, retrieval guard mới, PostgreSQL, đánh giá RAGAS
 
+> **Ghi chú:** tài liệu này viết trước khi sắp xếp lại thư mục (08/10/2026). Tên file cũ như `api.py`, `db.py`, `pipeline.py`, `test_*.py` nay nằm trong `app/`, `rag/`, `scripts/`, `tests/` — xem phần *Cấu trúc* trong [README](../README.md). Các lệnh chạy bên dưới đã được cập nhật theo đường dẫn mới.
+
 Tài liệu này liệt kê các thay đổi làm ngày 06/10/2026, tiếp nối phần database trong [CHANGES-database.md](CHANGES-database.md). Tất cả **chưa được commit**, nằm trên nhánh `main` tính từ commit `3c9826e`.
 
 ## Tóm tắt
@@ -45,7 +47,7 @@ Trong khi đó **cosine của mọi chunk đều thấp** (0.17–0.31), nhưng 
 Script mới. Chạy 22 câu giáo trình và 20 câu lạc đề qua `/search` của API đang chạy, mỗi câu thêm một bản viết thường không dấu "?", tổng 84 lượt. Script in điểm từng câu và ngưỡng tách hai nhóm tốt nhất.
 
 ```bash
-python calibrate.py --variants        # cần API đang chạy ở cổng 8000
+python -m scripts.calibrate --variants        # cần API đang chạy ở cổng 8000
 ```
 
 Kết quả với ngưỡng cũ (`MIN_TOP = 0.5`):
@@ -137,9 +139,9 @@ Các chỉ số:
 Báo cáo còn đếm câu giáo trình bị từ chối (**bỏ sót**) và câu lạc đề được trả lời (**lọt**).
 
 ```bash
-python eval_ragas.py                              # toàn bộ testset
-python eval_ragas.py --limit 3                    # thử nhanh
-python eval_ragas.py --rescore eval_runs/X.json   # chấm lại câu trả lời đã lưu, không chạy pipeline
+python -m scripts.eval_ragas                              # toàn bộ testset
+python -m scripts.eval_ragas --limit 3                    # thử nhanh
+python -m scripts.eval_ragas --rescore eval_runs/X.json   # chấm lại câu trả lời đã lưu, không chạy pipeline
 ```
 
 Kết quả thử 3 câu đầu (`eval_runs/20261006-105726.json`): faithfulness 0.97, answer_relevancy 0.93, context_relevance 1.00 (trung bình).
@@ -177,12 +179,12 @@ docker start postgres qdrant
 
 # Terminal 1 — API (thư mục gốc dự án)
 source .venv/bin/activate
-DEBUG_GUARDS=1 uvicorn api:app --reload      # bỏ DEBUG_GUARDS=1 nếu không cần log
+DEBUG_GUARDS=1 uvicorn app.main:app --reload      # bỏ DEBUG_GUARDS=1 nếu không cần log
 
 # Terminal 2 — trang web
 cd web && npm run dev
 
 # Khi cần đo lại
-python calibrate.py --variants               # ngưỡng lớp 2 (cần API đang chạy)
-python eval_ragas.py                         # chất lượng câu trả lời (tự nạp model)
+python -m scripts.calibrate --variants               # ngưỡng lớp 2 (cần API đang chạy)
+python -m scripts.eval_ragas                         # chất lượng câu trả lời (tự nạp model)
 ```

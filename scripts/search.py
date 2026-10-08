@@ -1,6 +1,6 @@
 from langchain_ollama import OllamaEmbeddings
 
-from search_rerank import COLLECTION, chapter_filter, get_qdrant, qdrant_search
+from rag.search_rerank import COLLECTION, chapter_filter, get_qdrant, qdrant_search
 
 MODEL_NAME = "qwen3-embedding:4b"   # PHẢI trùng model đã dùng khi ingest
 TOP_K = 3

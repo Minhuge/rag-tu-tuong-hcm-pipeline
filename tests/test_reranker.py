@@ -5,8 +5,8 @@ Test cho reranker.py.
     → kiểm tra format prompt, cắt/pad, công thức P(yes), sắp xếp, batch.
   - Test tích hợp: model Qwen3-Reranker thật → đoạn liên quan phải điểm cao hơn đoạn lạc đề.
 
-Chạy:  pytest -q test_reranker.py
-       pytest -q test_reranker.py -m "not slow"     # bỏ test nạp model thật
+Chạy:  pytest -q tests/test_reranker.py
+       pytest -q tests/test_reranker.py -m "not slow"     # bỏ test nạp model thật
 """
 import math
 
@@ -14,7 +14,7 @@ import pytest
 import torch
 from transformers import AutoTokenizer
 
-from reranker import DEFAULT_MODEL, PREFIX, SUFFIX, Qwen3Reranker, pick_device
+from rag.reranker import DEFAULT_MODEL, PREFIX, SUFFIX, Qwen3Reranker, pick_device
 
 # Token đặc biệt luôn được tokenizer giữ nguyên thành 1 token → dùng làm "dấu hiệu liên quan".
 MARKER = "<|object_ref_start|>"

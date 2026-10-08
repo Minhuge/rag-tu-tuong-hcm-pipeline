@@ -1,5 +1,7 @@
 # Thay đổi: lưu lịch sử chat vào SQLite + stream câu trả lời
 
+> **Ghi chú:** tài liệu này viết trước khi sắp xếp lại thư mục (08/10/2026). Tên file cũ như `api.py`, `db.py`, `pipeline.py`, `test_*.py` nay nằm trong `app/`, `rag/`, `scripts/`, `tests/` — xem phần *Cấu trúc* trong [README](../README.md). Các lệnh chạy bên dưới đã được cập nhật theo đường dẫn mới.
+
 Tài liệu này liệt kê các thay đổi kể từ khi thêm phần database (SQLite + SQLAlchemy) cho chatbot giáo trình Tư tưởng Hồ Chí Minh. Tất cả **chưa được commit**, nằm trên nhánh `main` tính từ commit `3c9826e` (Merge pull request #1).
 
 ## Tóm tắt
@@ -150,7 +152,7 @@ docker start postgres
 
 # Terminal 1 — API (thư mục gốc dự án); bảng được tạo trong Postgres khi khởi động
 source .venv/bin/activate
-uvicorn api:app --port 8000
+uvicorn app.main:app --port 8000
 
 # Terminal 2 — trang web
 cd web

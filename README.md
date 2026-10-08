@@ -5,17 +5,33 @@ Pipeline RAG cho giáo trình: đọc PDF, làm sạch và chia nhỏ văn bản
 ## Cấu trúc
 
 ```
-ingest.py           Load PDF → clean → chunk → embed → upsert Qdrant (payload: chunk_id, chapter, page, text)
-search.py           Kiểm thử semantic search thuần (có filter theo chương)
-reranker.py         Qwen3-Reranker-0.6B: chấm P(yes) cho từng cặp (câu hỏi, chunk)
-search_rerank.py    Qdrant → rerank → retrieval guard (pass / partial / refuse)
-guards.py           Các lớp guardrail: 1a regex, 1b Qwen3Guard, 3 system prompt, 4c trích dẫn, 4a giám khảo
-pipeline.py         GuardedRAG: ghép toàn bộ luồng hỏi–đáp (chạy demo được)
-api.py              FastAPI: /health, /search, /ask (+ phục vụ web/dist)
-web/                Web chat React + Vite (xem web/README.md)
-list_models.py      Liệt kê model Gemini mà API key gọi được
-test_*.py           pytest: reranker, guardrail, luồng pipeline (không tốn quota Gemini)
-screenshort/        Ảnh chụp kết quả chạy
+app/                    Backend FastAPI
+  main.py               Dựng app: nạp model lúc khởi động, CORS, gắn router, phục vụ web/dist
+  deps.py               Pipeline RAG dùng chung giữa các router (get_rag)
+  auth.py               Băm mật khẩu Argon2, JWT, refresh token, cookie, chống CSRF, get_current_user
+  db.py                 Bảng PostgreSQL (SQLAlchemy): users, conversations, messages, refresh_tokens, đề thi
+  routers/
+    qa.py               GET /health, POST /search, POST /ask
+    auth.py             /auth/register, /login, /refresh, /logout, /me
+    chat.py             /conversations, POST /chat (stream NDJSON, lưu lịch sử)
+rag/                    Lõi RAG
+  reranker.py           Qwen3-Reranker-0.6B: chấm P(yes) cho từng cặp (câu hỏi, chunk)
+  search_rerank.py      Qdrant → rerank → retrieval guard (pass / partial / refuse)
+  guards.py             Các lớp guardrail: 1a regex, 1b Qwen3Guard, 3 system prompt, 4c trích dẫn, 4a giám khảo
+  pipeline.py           GuardedRAG: ghép toàn bộ luồng hỏi–đáp
+scripts/                Công cụ dòng lệnh (chạy bằng python -m scripts.<tên> ở thư mục gốc)
+  ingest.py             Load PDF → clean → chunk → embed → upsert Qdrant
+  search.py             Kiểm thử semantic search thuần (có filter theo chương)
+  calibrate.py          Hiệu chỉnh ngưỡng lớp 2 (retrieval guard)
+  eval_ragas.py         Đánh giá chất lượng câu trả lời bằng RAGAS
+  list_models.py        Liệt kê model Gemini mà API key gọi được
+  create_user.py        Tạo tài khoản (vd. quản trị viên đầu tiên)
+  migrate_auth.py       Nâng database cũ lên có đăng nhập
+  migrate_sqlite.py     Chuyển lịch sử chat cũ từ SQLite sang PostgreSQL (đã chạy xong)
+tests/                  pytest: reranker, guardrail, pipeline, database, API, đăng nhập (không tốn quota Gemini)
+data/                   Giáo trình PDF, bộ câu hỏi đánh giá (eval_testset.json), kết quả đánh giá (eval_runs/)
+docs/                   Nhật ký thay đổi (CHANGES-*.md), ảnh chụp kết quả (screenshots/)
+web/                    Web chat React + Vite (xem web/README.md)
 ```
 
 ## Luồng xử lý một câu hỏi
@@ -53,21 +69,21 @@ GEMINI_API_KEY=...
 # Tuỳ chọn (đều có mặc định)
 QDRANT_URL=http://localhost:6333     # hoặc QDRANT_PATH=./qdrant_data để chạy nhúng, không cần Docker
 QDRANT_COLLECTION=tu_tuong_hcm
-GEMINI_MODEL=gemini-3.8-flash        # xem tên hợp lệ bằng: python list_models.py
+GEMINI_MODEL=gemini-3.8-flash        # xem tên hợp lệ bằng: python -m scripts.list_models
 GEMINI_THINKING=low                  # none nếu model không hỗ trợ thinking_level
 GUARD_DEVICE=cuda                    # cpu: guard không chiếm VRAM nhưng chậm hơn (~7s/câu)
 EMBED_NUM_CTX=1024                   # context Ollama lúc truy vấn (nhỏ → tốn ít VRAM)
 ```
 
-Chạy:
+Chạy (luôn ở thư mục gốc dự án, vì các lệnh `python -m` và `uvicorn app.main:app` tìm module từ đây):
 
 ```bash
-python ingest.py              # tạo lại collection + nạp 585 chunk
-python search.py              # semantic search thuần
-python search_rerank.py       # so sánh thứ hạng cosine vs rerank + retrieval guard
-python pipeline.py            # demo toàn bộ guardrail với 6 câu hỏi
-uvicorn api:app --port 8000   # API, tài liệu tại http://localhost:8000/docs
-pytest -q                     # toàn bộ test (-m "not slow" để bỏ test nạp model thật)
+python -m scripts.ingest          # tạo lại collection + nạp 585 chunk
+python -m scripts.search          # semantic search thuần
+python -m rag.search_rerank       # so sánh thứ hạng cosine vs rerank + retrieval guard
+python -m rag.pipeline            # demo toàn bộ guardrail với 6 câu hỏi
+uvicorn app.main:app --port 8000  # API, tài liệu tại http://localhost:8000/docs
+pytest -q                         # toàn bộ test (-m "not slow" để bỏ test nạp model thật)
 ```
 
 Web chat (cần Node.js ≥ 20):
@@ -128,11 +144,11 @@ NAME                 ID            SIZE    PROCESSOR        CONTEXT  UNTIL
 qwen3-embedding:4b   df5bd2e3c74c  4.8 GB  10%/90% CPU/GPU  4096     4 minutes from now
 ```
 
-![Kiểm tra GPU/CPU bằng ollama ps](screenshort/ollama_ps.png)
+![Kiểm tra GPU/CPU bằng ollama ps](docs/screenshots/ollama_ps.png)
 
 ## 4. Kết quả chạy search.py
 
-(Ảnh chụp dưới đây là từ bản dùng Pinecone trước đây; chạy lại `python search.py` để xem kết quả trên Qdrant.)
+(Ảnh chụp dưới đây là từ bản dùng Pinecone trước đây; chạy lại `python -m scripts.search` để xem kết quả trên Qdrant.)
 
 Ba câu hỏi kiểm thử:
 
@@ -142,11 +158,11 @@ Ba câu hỏi kiểm thử:
 | 2 | Quan điểm của Hồ Chí Minh về đại đoàn kết toàn dân tộc? | Không |
 | 3 | Đối tượng và phương pháp nghiên cứu của môn học là gì? | `chapter = "Chương Mở đầu"` (Qdrant `FieldCondition`) |
 
-![Kết quả câu 1](screenshort/search_q1.png)
+![Kết quả câu 1](docs/screenshots/search_q1.png)
 
-![Kết quả câu 2](screenshort/search_q2.png)
+![Kết quả câu 2](docs/screenshots/search_q2.png)
 
-![Kết quả câu 3 với Metadata Filter](screenshort/search_q3_filter.png)
+![Kết quả câu 3 với Metadata Filter](docs/screenshots/search_q3_filter.png)
 
 chạy server
 
@@ -154,7 +170,7 @@ Bước 2: bật API (terminal 1)
 
 cd /Users/pmhieu7/Documents/GitHub/rag-tu-tuong-hcm-pipeline
 source .venv/bin/activate
-uvicorn api:app --port 8000
+uvicorn app.main:app --port 8000
 
 Bước 3: bật trang web (terminal 2)
 
