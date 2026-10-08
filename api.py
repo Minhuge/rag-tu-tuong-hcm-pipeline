@@ -5,8 +5,20 @@ REST API cho chatbot giáo trình Tư tưởng Hồ Chí Minh.
   POST /search   — chỉ retrieve + rerank + retrieval guard (không gọi Gemini, không tốn quota)
   POST /ask      — toàn bộ pipeline có guardrail (pipeline.GuardedRAG), không lưu lịch sử
 
-  Lịch sử chat (PostgreSQL, DATABASE_URL trong .env, xem db.py). Mọi request gửi header X-Client-Id (mã ngẫu nhiên của trình duyệt):
-  GET    /conversations       — danh sách cuộc trò chuyện của trình duyệt này, mới → cũ
+  Đăng nhập (xem auth.py) — access token và refresh token đều nằm trong cookie httpOnly:
+  POST   /auth/register       — tạo tài khoản rồi đăng nhập luôn (tắt bằng ALLOW_REGISTRATION=false)
+  POST   /auth/login          — email + mật khẩu → đặt 2 cookie; JSON có kèm access_token cho /docs, curl
+  POST   /auth/refresh        — access token hết hạn → đổi refresh token lấy cặp cookie mới (JSON không có token)
+  POST   /auth/logout         — thu hồi refresh token, xoá 2 cookie
+  GET    /auth/me             — thông tin người đang đăng nhập
+  POST/DELETE đăng nhập bằng cookie phải có header X-Requested-With (chống CSRF); web tự gửi.
+
+  Mọi endpoint dưới đây và /search, /ask cần đăng nhập: cookie access_token (web) hoặc header
+  Authorization: Bearer <access token> (trong /docs: bấm Authorize, dán access_token lấy từ /auth/login).
+  Chỉ /health là công khai.
+
+  Lịch sử chat (PostgreSQL, DATABASE_URL trong .env, xem db.py), mỗi người chỉ thấy của mình:
+  GET    /conversations       — danh sách cuộc trò chuyện, mới → cũ
   GET    /conversations/{id}  — một cuộc trò chuyện kèm toàn bộ tin nhắn
   DELETE /conversations/{id}  — xoá cuộc trò chuyện và tin nhắn của nó
   POST   /chat                — gửi câu hỏi, nhận về luồng NDJSON (mỗi dòng một sự kiện):
@@ -24,18 +36,18 @@ Docs:  http://localhost:8000/docs
 import asyncio
 import json
 import os
-import re
 import time
 from contextlib import asynccontextmanager
 from dataclasses import asdict
 
-from fastapi import Depends, FastAPI, Header, HTTPException, Response
+from fastapi import Cookie, Depends, FastAPI, HTTPException, Response
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import StreamingResponse
+from fastapi.responses import JSONResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from google.genai import errors as genai_errors
 from pydantic import BaseModel, Field
 
+import auth
 import db
 from guards import MAX_QUESTION_CHARS, source_label
 from pipeline import GEMINI_MODEL, GEMINI_THINKING, GuardedRAG
@@ -48,6 +60,7 @@ rag: GuardedRAG | None = None
 async def lifespan(app: FastAPI):
     global rag
     t = time.perf_counter()
+    auth.check_config()                         # thiếu JWT_SECRET → dừng ngay
     db.init_db()                                # tạo bảng trong Postgres nếu chưa có
     rag = await asyncio.to_thread(GuardedRAG)   # nạp model không chặn event loop
     await asyncio.to_thread(rag.warmup)
@@ -64,7 +77,8 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=os.getenv("CORS_ORIGINS", "http://localhost:5173").split(","),
     allow_methods=["GET", "POST", "DELETE"],
-    allow_headers=["Content-Type", "X-Client-Id"],
+    allow_headers=["Content-Type", "Authorization", auth.CSRF_HEADER],
+    allow_credentials=True,     # cho phép gửi cookie đăng nhập
 )
 
 
@@ -79,6 +93,18 @@ class SearchRequest(BaseModel):
     question: str = Field(..., min_length=1, max_length=MAX_QUESTION_CHARS)
     chapter: str | None = Field(None, examples=["Chương Mở đầu"])
     top_n: int = Field(TOP_N, ge=1, le=CANDIDATES)
+
+
+class RegisterRequest(BaseModel):
+    # Không giới hạn chặt ở đây: auth.register trả lỗi tiếng Việt dễ hiểu hơn lỗi 422.
+    email: str = Field(..., max_length=255, examples=["ban@example.com"])
+    password: str = Field(..., max_length=1024)
+    display_name: str | None = Field(None, max_length=100)
+
+
+class LoginRequest(BaseModel):
+    email: str = Field(..., max_length=255)
+    password: str = Field(..., max_length=1024)
 
 
 def _rag() -> GuardedRAG:
@@ -103,7 +129,7 @@ def health():
 
 
 @app.post("/search")
-def search(req: SearchRequest):
+def search(req: SearchRequest, user: dict = Depends(auth.get_current_user)):
     """Def thường (không async) → FastAPI tự chạy trong threadpool, không chặn event loop."""
     r = _rag()
     t0 = time.perf_counter()
@@ -132,7 +158,7 @@ def search(req: SearchRequest):
 
 
 @app.post("/ask")
-async def ask(req: AskRequest):
+async def ask(req: AskRequest, user: dict = Depends(auth.get_current_user)):
     r = _rag()
     try:
         res = await r.ask(req.question)
@@ -143,17 +169,62 @@ async def ask(req: AskRequest):
     return asdict(res)
 
 
-# ---------- lịch sử chat (SQLite) ----------
-_CLIENT_RE = re.compile(r"^[A-Za-z0-9_-]{8,64}$")
+# ---------- đăng nhập ----------
+def _start_session(response: Response, user: dict) -> dict:
+    access = auth.create_access_token(user["id"])
+    auth.set_session_cookies(response, access, auth.issue_refresh_token(user["id"]))
+    return auth.session_response(user, access, include_token=True)
 
 
-def client_id(x_client_id: str = Header(..., description="Mã ngẫu nhiên của trình duyệt, tự tạo ở web/src/api.js")) -> str:
-    # Không phải đăng nhập: chỉ để người dùng chung mạng LAN không thấy lịch sử của nhau.
-    if not _CLIENT_RE.match(x_client_id):
-        raise HTTPException(400, "X-Client-Id không hợp lệ")
-    return x_client_id
+@app.post("/auth/register", status_code=201)
+def register(req: RegisterRequest, response: Response):
+    if not auth.ALLOW_REGISTRATION:
+        raise HTTPException(403, "Đăng ký đang tắt, liên hệ quản trị viên để được cấp tài khoản.")
+    try:
+        user = auth.register(req.email, req.password, req.display_name)
+    except ValueError as e:
+        raise HTTPException(400, str(e)) from e
+    return _start_session(response, user)
 
 
+@app.post("/auth/login")
+def login(req: LoginRequest, response: Response):
+    user = auth.authenticate(req.email, req.password)
+    if user is None:     # không nói rõ sai email hay sai mật khẩu → không dò được email nào đã đăng ký
+        raise HTTPException(401, "Email hoặc mật khẩu không đúng", headers={"WWW-Authenticate": "Bearer"})
+    return _start_session(response, user)
+
+
+@app.post("/auth/refresh", dependencies=[Depends(auth.check_csrf)])
+def refresh(response: Response, refresh_token: str | None = Cookie(None)):
+    rotated = auth.rotate_refresh_token(refresh_token) if refresh_token else None
+    if rotated is None:
+        # Không raise HTTPException: như vậy sẽ mất lệnh xoá cookie hỏng trên trình duyệt.
+        res = JSONResponse({"detail": "Phiên đăng nhập đã hết, hãy đăng nhập lại"}, status_code=401)
+        auth.clear_session_cookies(res)
+        return res
+    user, new_refresh = rotated
+    access = auth.create_access_token(user["id"])
+    auth.set_session_cookies(response, access, new_refresh)
+    return auth.session_response(user, access, include_token=False)
+
+
+@app.post("/auth/logout", status_code=204, dependencies=[Depends(auth.check_csrf)])
+def logout(refresh_token: str | None = Cookie(None)):
+    # Không cần access token → access token đã hết hạn vẫn đăng xuất được.
+    if refresh_token:
+        auth.revoke_refresh_token(refresh_token)
+    res = Response(status_code=204)
+    auth.clear_session_cookies(res)
+    return res
+
+
+@app.get("/auth/me")
+def me(user: dict = Depends(auth.get_current_user)):
+    return user
+
+
+# ---------- lịch sử chat ----------
 class ChatRequest(BaseModel):
     conversation_id: int | None = Field(None, description="Bỏ trống → tạo cuộc trò chuyện mới")
     message: str = Field(..., max_length=MAX_QUESTION_CHARS * 5,
@@ -162,22 +233,22 @@ class ChatRequest(BaseModel):
 
 
 @app.get("/conversations")
-def list_conversations(cid: str = Depends(client_id)):
-    return db.list_conversations(cid)
+def list_conversations(user: dict = Depends(auth.get_current_user)):
+    return db.list_conversations(user["id"])
 
 
 @app.get("/conversations/{conversation_id}")
-def get_conversation(conversation_id: int, cid: str = Depends(client_id)):
+def get_conversation(conversation_id: int, user: dict = Depends(auth.get_current_user)):
     try:
-        return db.get_conversation(cid, conversation_id)
+        return db.get_conversation(user["id"], conversation_id)
     except LookupError as e:
         raise HTTPException(404, str(e)) from e
 
 
 @app.delete("/conversations/{conversation_id}", status_code=204)
-def delete_conversation(conversation_id: int, cid: str = Depends(client_id)):
+def delete_conversation(conversation_id: int, user: dict = Depends(auth.get_current_user)):
     try:
-        db.delete_conversation(cid, conversation_id)
+        db.delete_conversation(user["id"], conversation_id)
     except LookupError as e:
         raise HTTPException(404, str(e)) from e
     return Response(status_code=204)
@@ -188,7 +259,7 @@ def _ndjson(event: dict) -> bytes:
 
 
 @app.post("/chat")
-async def chat(req: ChatRequest, cid: str = Depends(client_id)):
+async def chat(req: ChatRequest, user: dict = Depends(auth.get_current_user)):
     """
     Trả về application/x-ndjson, mỗi dòng một sự kiện:
       {"type": "conversation", "id", "title", ...}   luôn là dòng đầu (id mới nếu vừa tạo)
@@ -198,9 +269,10 @@ async def chat(req: ChatRequest, cid: str = Depends(client_id)):
       {"type": "error", "message": "..."}            lỗi giữa chừng; tin user vẫn được lưu để hỏi lại
     """
     r = _rag()
+    uid = user["id"]
     # Bước 1–2: lưu tin user, đọc lịch sử. Lỗi ở đây (không tìm thấy cuộc trò chuyện) → trả 404 bình thường.
     try:
-        conversation, history = await asyncio.to_thread(db.begin_turn, cid, req.conversation_id, req.message, req.retry)
+        conversation, history = await asyncio.to_thread(db.begin_turn, uid, req.conversation_id, req.message, req.retry)
     except LookupError as e:
         raise HTTPException(404, str(e)) from e
     conv_id = conversation["id"]
@@ -212,7 +284,7 @@ async def chat(req: ChatRequest, cid: str = Depends(client_id)):
             async for ev in r.ask_stream(req.message, history):
                 if ev["type"] == "done":
                     # Bước 4: stream xong → lưu câu trả lời cuối (đã thay bằng câu an toàn nếu không qua 4c/4a)
-                    ev = {**ev, "message_id": await asyncio.to_thread(db.save_answer, cid, conv_id, ev["result"])}
+                    ev = {**ev, "message_id": await asyncio.to_thread(db.save_answer, uid, conv_id, ev["result"])}
                 yield _ndjson(ev)
         except RuntimeError as e:                        # hết quota ngày / hết credit (pipeline._call)
             yield _ndjson({"type": "error", "message": str(e)})
@@ -229,7 +301,7 @@ async def chat(req: ChatRequest, cid: str = Depends(client_id)):
 
 
 # ---------- web chat ----------
-# Mount SAU các route API → /ask, /search, /health, /docs vẫn được khớp trước.
+# Mount SAU các route API → /auth, /ask, /search, /health, /docs vẫn được khớp trước.
 WEB_DIST = os.path.join(os.path.dirname(os.path.abspath(__file__)), "web", "dist")
 if os.path.isdir(WEB_DIST):
     app.mount("/", StaticFiles(directory=WEB_DIST, html=True), name="web")

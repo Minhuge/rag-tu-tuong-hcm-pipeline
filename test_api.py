@@ -9,9 +9,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 import api
-
-HEAD_A = {"X-Client-Id": "client-aaaa"}
-HEAD_B = {"X-Client-Id": "client-bbbb"}
+import auth
 
 
 class FakeRAG:
@@ -40,63 +38,81 @@ def client(db_engine, monkeypatch):
     return c
 
 
-def chat(client, message, conversation_id=None, headers=HEAD_A, retry=False):
+def bearer(email):
+    user = auth.register(email, "matkhau123")
+    return {"Authorization": f"Bearer {auth.create_access_token(user['id'])}"}
+
+
+@pytest.fixture
+def head_a(db_engine):
+    return bearer("a@example.com")
+
+
+@pytest.fixture
+def head_b(db_engine):
+    return bearer("b@example.com")
+
+
+def chat(client, message, headers, conversation_id=None, retry=False):
     res = client.post("/chat", json={"conversation_id": conversation_id, "message": message, "retry": retry},
                       headers=headers)
     assert res.status_code == 200 and res.headers["content-type"].startswith("application/x-ndjson")
     return [json.loads(line) for line in res.text.splitlines() if line]
 
 
-def test_chat_streams_and_saves_both_messages(client):
-    events = chat(client, "Câu 1")
+def test_chat_streams_and_saves_both_messages(client, head_a):
+    events = chat(client, "Câu 1", head_a)
     assert [e["type"] for e in events] == ["conversation", "status", "delta", "delta", "delta", "done"]
     conv = events[0]
     assert conv["title"] == "Câu 1"
     assert events[-1]["message_id"] > 0
 
-    full = client.get(f"/conversations/{conv['id']}", headers=HEAD_A).json()
+    full = client.get(f"/conversations/{conv['id']}", headers=head_a).json()
     assert [(m["role"], m["content"]) for m in full["messages"]] == [
         ("user", "Câu 1"), ("assistant", "Trả lời cho: Câu 1")]
     assert full["messages"][1]["meta"]["timings"] == {"total_s": 0.1}
 
 
-def test_followup_receives_history(client):
-    conv_id = chat(client, "Câu 1")[0]["id"]
-    chat(client, "nói rõ hơn", conv_id)
+def test_followup_receives_history(client, head_a):
+    conv_id = chat(client, "Câu 1", head_a)[0]["id"]
+    chat(client, "nói rõ hơn", head_a, conv_id)
     assert client.fake.histories == [[], [{"role": "user", "content": "Câu 1"},
                                           {"role": "assistant", "content": "Trả lời cho: Câu 1"}]]
-    assert [c["id"] for c in client.get("/conversations", headers=HEAD_A).json()] == [conv_id]
+    assert [c["id"] for c in client.get("/conversations", headers=head_a).json()] == [conv_id]
 
 
-def test_error_midstream_keeps_user_message_for_retry(client):
+def test_error_midstream_keeps_user_message_for_retry(client, head_a):
     client.fake.fail = True
-    events = chat(client, "Câu lỗi")
+    events = chat(client, "Câu lỗi", head_a)
     assert events[-1] == {"type": "error", "message": "Đã hết lượt gọi Gemini trong ngày"}
     conv_id = events[0]["id"]
-    msgs = client.get(f"/conversations/{conv_id}", headers=HEAD_A).json()["messages"]
+    msgs = client.get(f"/conversations/{conv_id}", headers=head_a).json()["messages"]
     assert [m["role"] for m in msgs] == ["user"]          # câu trả lời dở dang không được lưu
 
     client.fake.fail = False
-    chat(client, "Câu lỗi", conv_id, retry=True)
-    msgs = client.get(f"/conversations/{conv_id}", headers=HEAD_A).json()["messages"]
+    chat(client, "Câu lỗi", head_a, conv_id, retry=True)
+    msgs = client.get(f"/conversations/{conv_id}", headers=head_a).json()["messages"]
     assert [m["role"] for m in msgs] == ["user", "assistant"]   # không lưu trùng câu hỏi
 
 
-def test_clients_are_isolated(client):
-    conv_id = chat(client, "Của A")[0]["id"]
-    assert client.get("/conversations", headers=HEAD_B).json() == []
-    assert client.get(f"/conversations/{conv_id}", headers=HEAD_B).status_code == 404
-    res = client.post("/chat", json={"conversation_id": conv_id, "message": "chen vào"}, headers=HEAD_B)
+def test_users_are_isolated(client, head_a, head_b):
+    conv_id = chat(client, "Của A", head_a)[0]["id"]
+    assert client.get("/conversations", headers=head_b).json() == []
+    assert client.get(f"/conversations/{conv_id}", headers=head_b).status_code == 404
+    res = client.post("/chat", json={"conversation_id": conv_id, "message": "chen vào"}, headers=head_b)
     assert res.status_code == 404
-    assert client.delete(f"/conversations/{conv_id}", headers=HEAD_B).status_code == 404
+    assert client.delete(f"/conversations/{conv_id}", headers=head_b).status_code == 404
 
 
-def test_delete(client):
-    conv_id = chat(client, "Xoá tôi")[0]["id"]
-    assert client.delete(f"/conversations/{conv_id}", headers=HEAD_A).status_code == 204
-    assert client.get("/conversations", headers=HEAD_A).json() == []
+def test_delete(client, head_a):
+    conv_id = chat(client, "Xoá tôi", head_a)[0]["id"]
+    assert client.delete(f"/conversations/{conv_id}", headers=head_a).status_code == 204
+    assert client.get("/conversations", headers=head_a).json() == []
 
 
-@pytest.mark.parametrize("headers", [{}, {"X-Client-Id": "short"}, {"X-Client-Id": "has spaces!!"}])
-def test_client_id_required(client, headers):
-    assert client.get("/conversations", headers=headers).status_code in (400, 422)
+@pytest.mark.parametrize("method, path", [("get", "/conversations"), ("get", "/conversations/1"),
+                                          ("delete", "/conversations/1"), ("post", "/chat"),
+                                          ("post", "/ask"), ("post", "/search")])
+def test_endpoints_require_login(client, method, path):
+    res = getattr(client, method)(path)
+    assert res.status_code == 401 and res.headers["www-authenticate"] == "Bearer"

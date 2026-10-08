@@ -8,39 +8,77 @@ export class ApiError extends Error {
   }
 }
 
-// Mã ngẫu nhiên của trình duyệt này (không phải đăng nhập): máy chủ chỉ trả về lịch sử của mã này,
-// nên người dùng chung mạng LAN không thấy cuộc trò chuyện của nhau. Xoá dữ liệu trình duyệt = mất lịch sử.
-const CLIENT_KEY = 'hcm-client-id'
-const CLIENT_RE = /^[A-Za-z0-9_-]{8,64}$/
-// Không dùng crypto.randomUUID: hàm này chỉ có trên https/localhost, mở qua IP LAN (http) sẽ lỗi.
-const randomId = () => 'b' + Date.now().toString(36) + Math.random().toString(36).slice(2, 12)
-let memoryClientId = null
+// ---------- đăng nhập (xem auth.py) ----------
+// Access token và refresh token đều nằm trong cookie httpOnly do máy chủ đặt: JavaScript không đọc được
+// (mã độc chèn vào trang không lấy được), trình duyệt tự gửi kèm mỗi request, F5 vẫn còn.
+// Vì vậy file này không giữ token nào — chỉ cần gửi kèm cookie (credentials) và header chống CSRF.
+let refreshing = null // request làm mới đang chạy, dùng chung cho mọi request cùng gặp 401
+let onSessionExpired = () => {}
 
-function clientId() {
-  try {
-    let id = localStorage.getItem(CLIENT_KEY)
-    if (!id || !CLIENT_RE.test(id)) {
-      id = randomId()
-      localStorage.setItem(CLIENT_KEY, id)
-    }
-    return id
-  } catch {
-    // chế độ ẩn danh chặn localStorage → dùng mã tạm cho phiên này
-    memoryClientId ??= randomId()
-    return memoryClientId
-  }
+/** App đăng ký hàm này để quay về màn hình đăng nhập khi phiên hết hạn giữa chừng. */
+export const setSessionExpiredHandler = (fn) => {
+  onSessionExpired = fn
 }
 
-const headers = (extra) => ({ 'Content-Type': 'application/json', 'X-Client-Id': clientId(), ...extra })
-
-async function send(path, options) {
+async function rawFetch(path, options = {}) {
+  // X-Requested-With: máy chủ bắt buộc với POST/DELETE dùng cookie → trang web khác không giả mạo được
+  const headers = { 'Content-Type': 'application/json', 'X-Requested-With': 'fetch', ...options.headers }
   try {
-    return await fetch(BASE + path, { ...options, headers: headers(options.headers) })
+    // include: gửi kèm cookie đăng nhập kể cả khi web và API khác origin (VITE_API_URL)
+    return await fetch(BASE + path, { ...options, headers, credentials: 'include' })
   } catch (e) {
     if (e.name === 'AbortError') throw e
     throw new ApiError('Không kết nối được máy chủ. Kiểm tra uvicorn api:app đã chạy chưa.', 0)
   }
 }
+
+/** Đổi cookie refresh token lấy cặp cookie mới. Trả về user, hoặc null nếu phải đăng nhập lại. */
+function refreshSession() {
+  refreshing ??= rawFetch('/auth/refresh', { method: 'POST' })
+    .then(async (res) => (res.ok ? (await res.json()).user : null))
+    .finally(() => {
+      refreshing = null
+    })
+  return refreshing
+}
+
+// Access token sống 15 phút → hết hạn thì máy chủ trả 401: làm mới một lần rồi gửi lại.
+// Body là chuỗi JSON nên gửi lại được, kể cả /chat (luồng chưa bắt đầu khi bị 401).
+async function send(path, options) {
+  const res = await rawFetch(path, options)
+  if (res.status !== 401) return res
+  const user = await refreshSession()
+  if (!user) {
+    onSessionExpired()
+    return res
+  }
+  return rawFetch(path, options)
+}
+
+async function authRequest(path, body) {
+  const res = await rawFetch(path, { method: 'POST', body: JSON.stringify(body) })
+  if (!res.ok) throw await errorFrom(res)
+  return (await res.json()).user // máy chủ đã đặt cookie; bỏ qua access_token trong JSON (dành cho /docs, curl)
+}
+
+export const login = (email, password) => authRequest('/auth/login', { email, password })
+
+export const register = (email, password, displayName) =>
+  authRequest('/auth/register', { email, password, display_name: displayName || null })
+
+/**
+ * Lúc mở trang: hỏi /auth/me bằng cookie. Access cookie đã hết hạn (quá 15 phút) → làm mới một lần.
+ * Trả về user (đăng nhập sẵn) hoặc null (cần đăng nhập). Mất kết nối → ApiError.
+ */
+export async function restoreSession() {
+  let res = await rawFetch('/auth/me')
+  if (res.status === 401 && (await refreshSession())) res = await rawFetch('/auth/me')
+  if (res.status === 401) return null
+  if (!res.ok) throw await errorFrom(res)
+  return res.json()
+}
+
+export const logout = () => rawFetch('/auth/logout', { method: 'POST' }) // máy chủ xoá cả hai cookie
 
 async function errorFrom(res) {
   let body = null
@@ -51,7 +89,9 @@ async function errorFrom(res) {
   }
   const detail = typeof body?.detail === 'string' ? body.detail : null
   const fallback = {
+    401: 'Phiên đăng nhập đã hết, hãy đăng nhập lại.',
     404: 'Không tìm thấy cuộc trò chuyện (có thể đã bị xoá).',
+    422: 'Dữ liệu gửi lên không hợp lệ.',
     502: 'Máy chủ chưa sẵn sàng hoặc lỗi khi gọi Gemini.',
     503: 'Model đang khởi động, thử lại sau ít giây.',
     500: 'Máy chủ gặp lỗi hoặc chưa khởi động xong.',

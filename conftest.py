@@ -6,13 +6,14 @@ Kiểm tra trên Postgres thật: đặt TEST_DATABASE_URL tới một database 
 (mọi bảng trong đó bị xoá trước mỗi test), vd.
 
   docker exec postgres createdb -U hcm hcm_chat_test
-  TEST_DATABASE_URL=postgresql+psycopg://hcm:mật_khẩu@localhost:5432/hcm_chat_test pytest -q test_db.py test_api.py
+  TEST_DATABASE_URL=postgresql+psycopg://hcm:mật_khẩu@localhost:5432/hcm_chat_test pytest -q test_db.py test_api.py test_auth.py
 """
 import os
 
 import pytest
 from sqlalchemy import create_engine, event
 
+import auth
 import db
 
 
@@ -31,3 +32,9 @@ def db_engine(tmp_path, monkeypatch):
     db.init_db()
     yield engine
     engine.dispose()
+
+
+@pytest.fixture(autouse=True)
+def jwt_secret(monkeypatch):
+    """Test không đọc JWT_SECRET thật trong .env."""
+    monkeypatch.setattr(auth, "JWT_SECRET", "test-secret-" + "x" * 40)

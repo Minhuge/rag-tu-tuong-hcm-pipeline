@@ -23,6 +23,8 @@ pydantic>=2
 fastapi>=0.115
 sqlalchemy>=2.0
 psycopg[binary]>=3.2
+pwdlib[argon2]>=0.3        # băm mật khẩu bảng users (Argon2)
+pyjwt>=2.9                 # access token đăng nhập (auth.py)
 uvicorn[standard]>=0.30
 pytest>=8
 

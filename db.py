@@ -1,29 +1,35 @@
 """
 Lưu lịch sử chat vào PostgreSQL bằng SQLAlchemy.
 
-  conversations                     messages
-  ─────────────                     ────────────────
-  id (PK)          ◀───────┐        id (PK)
-  client_id                └─────── conversation_id (FK)
-  title                             role ("user" / "assistant")
-  created_at                        content
-  updated_at                        meta (JSON: nguồn, các lớp kiểm tra, thời gian — chỉ tin assistant)
-                                    created_at  
+  users                  conversations                messages
+  ─────                  ─────────────                ────────────────
+  id (PK)  ◀──────┬───── user_id (FK)                 id (PK)
+  email (unique)  │      id (PK)        ◀───────────── conversation_id (FK)
+  password_hash   │      title                        role ("user" / "assistant")
+  display_name    │      created_at                   content
+  is_active       │      updated_at                   meta (JSON: nguồn, các lớp kiểm tra, thời gian)
+  is_admin        │                                   created_at
+  created_at      │      refresh_tokens
+  last_login_at   │      ──────────────
+                  └───── user_id (FK)
+                         id (PK), token_hash (SHA-256, không lưu token gốc),
+                         created_at, expires_at, revoked_at
 
-client_id: mã ngẫu nhiên mỗi trình duyệt tự tạo (không phải đăng nhập) → người dùng
-chung mạng LAN chỉ thấy cuộc trò chuyện của chính trình duyệt mình.
+Mỗi người chỉ thấy cuộc trò chuyện của chính mình (user_id). Xoá user → xoá dây chuyền
+cuộc trò chuyện, tin nhắn và refresh token của người đó.
+Băm mật khẩu, JWT và đăng nhập nằm ở auth.py; file này chỉ lưu và đọc dữ liệu.
 
 Session SQLAlchemy ở đây là đồng bộ; api.py gọi các hàm này qua asyncio.to_thread.
 
 .env cần:  DATABASE_URL=postgresql+psycopg://user:mật_khẩu@localhost:5432/hcm_chat
-Bảng được tạo lúc khởi động API (init_db). Chuyển dữ liệu cũ từ chat.db: python migrate_sqlite.py
+Bảng được tạo lúc khởi động API (init_db). Database tạo trước khi có đăng nhập: python migrate_auth.py
 Test chạy trên SQLite tạm (xem conftest.py), không cần Postgres.
 """
 import os
 from datetime import datetime, timezone
 
 from dotenv import load_dotenv
-from sqlalchemy import JSON, DateTime, ForeignKey, String, Text, create_engine, select
+from sqlalchemy import JSON, Boolean, DateTime, ForeignKey, String, Text, create_engine, false, inspect, select
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import DeclarativeBase, Mapped, Session, mapped_column, relationship
 
@@ -61,7 +67,7 @@ class Conversation(Base):
     __tablename__ = "conversations"
 
     id: Mapped[int] = mapped_column(primary_key=True)
-    client_id: Mapped[str] = mapped_column(String(64), index=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
     title: Mapped[str] = mapped_column(String(200))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, index=True)
@@ -83,10 +89,43 @@ class Message(Base):
     conversation: Mapped[Conversation] = relationship(back_populates="messages")
 
 
+class User(Base):
+    __tablename__ = "users"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    email: Mapped[str] = mapped_column(String(255), unique=True, index=True)   # luôn lưu chữ thường
+    password_hash: Mapped[str] = mapped_column(String(255))
+    display_name: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True)
+    is_admin: Mapped[bool] = mapped_column(Boolean, default=False, server_default=false())
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    last_login_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
+class RefreshToken(Base):
+    """Mỗi lần đăng nhập / làm mới phiên một dòng. Đổi token → dòng cũ bị đánh dấu revoked_at."""
+    __tablename__ = "refresh_tokens"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
+    token_hash: Mapped[str] = mapped_column(String(64), unique=True, index=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
+# Cột được thêm sau khi bảng đã có dữ liệu → create_all không tự thêm, phải chạy migrate_auth.py.
+_MIGRATED_COLUMNS = {"conversations": "user_id", "users": "is_admin"}
+
+
 def init_db():
     if engine is None:
         raise RuntimeError("Chưa đặt DATABASE_URL trong .env (vd. postgresql+psycopg://user:pass@localhost:5432/hcm_chat)")
     Base.metadata.create_all(engine)
+    cols = inspect(engine)
+    for table, column in _MIGRATED_COLUMNS.items():
+        if column not in {c["name"] for c in cols.get_columns(table)}:
+            raise RuntimeError(f"Bảng {table} chưa có cột {column} → chạy: python migrate_auth.py")
 
 
 # ---------- chuyển sang dict để trả về JSON ----------
@@ -105,6 +144,12 @@ def message_dict(m: Message) -> dict:
     return {"id": m.id, "role": m.role, "content": m.content, "meta": m.meta, "created_at": _ms(m.created_at)}
 
 
+def user_dict(u: User) -> dict:
+    """Thông tin trả cho trình duyệt — không bao giờ kèm password_hash."""
+    return {"id": u.id, "email": u.email, "display_name": u.display_name, "is_admin": u.is_admin,
+            "created_at": _ms(u.created_at)}
+
+
 def make_title(text: str) -> str:
     t = " ".join(text.split())
     if not t:
@@ -113,29 +158,29 @@ def make_title(text: str) -> str:
 
 
 # ---------- các thao tác ----------
-def _owned(s: Session, client_id: str, conversation_id: int) -> Conversation:
+def _owned(s: Session, user_id: int, conversation_id: int) -> Conversation:
     conv = s.get(Conversation, conversation_id)
-    if conv is None or conv.client_id != client_id:
+    if conv is None or conv.user_id != user_id:
         raise LookupError("Không tìm thấy cuộc trò chuyện")
     return conv
 
 
-def list_conversations(client_id: str, limit: int = 200) -> list[dict]:
+def list_conversations(user_id: int, limit: int = 200) -> list[dict]:
     with Session(engine) as s:
-        rows = s.scalars(select(Conversation).where(Conversation.client_id == client_id)
+        rows = s.scalars(select(Conversation).where(Conversation.user_id == user_id)
                          .order_by(Conversation.updated_at.desc()).limit(limit))
         return [conversation_summary(c) for c in rows]
 
 
-def get_conversation(client_id: str, conversation_id: int) -> dict:
+def get_conversation(user_id: int, conversation_id: int) -> dict:
     with Session(engine) as s:
-        conv = _owned(s, client_id, conversation_id)
+        conv = _owned(s, user_id, conversation_id)
         return {**conversation_summary(conv), "messages": [message_dict(m) for m in conv.messages]}
 
 
-def delete_conversation(client_id: str, conversation_id: int) -> None:
+def delete_conversation(user_id: int, conversation_id: int) -> None:
     with Session(engine) as s, s.begin():
-        s.delete(_owned(s, client_id, conversation_id))
+        s.delete(_owned(s, user_id, conversation_id))
 
 
 def _history(prior: list[Message]) -> list[dict]:
@@ -153,7 +198,7 @@ def _history(prior: list[Message]) -> list[dict]:
     return [msg for turn in turns[-HISTORY_TURNS:] for msg in turn] if HISTORY_TURNS > 0 else []
 
 
-def begin_turn(client_id: str, conversation_id: int | None, text: str, retry: bool = False) -> tuple[dict, list[dict]]:
+def begin_turn(user_id: int, conversation_id: int | None, text: str, retry: bool = False) -> tuple[dict, list[dict]]:
     """
     Bước 1–2 trong sơ đồ: lưu tin của người dùng rồi đọc lịch sử trước đó.
     conversation_id = None → tạo cuộc trò chuyện mới, tiêu đề lấy từ câu hỏi đầu tiên.
@@ -161,11 +206,11 @@ def begin_turn(client_id: str, conversation_id: int | None, text: str, retry: bo
     """
     with Session(engine) as s, s.begin():
         if conversation_id is None:
-            conv = Conversation(client_id=client_id, title=make_title(text))
+            conv = Conversation(user_id=user_id, title=make_title(text))
             s.add(conv)
             s.flush()
         else:
-            conv = _owned(s, client_id, conversation_id)
+            conv = _owned(s, user_id, conversation_id)
 
         prior = list(conv.messages)
         last = prior[-1] if prior else None
@@ -178,13 +223,24 @@ def begin_turn(client_id: str, conversation_id: int | None, text: str, retry: bo
         return conversation_summary(conv), _history(prior)
 
 
-def save_answer(client_id: str, conversation_id: int, result: dict) -> int:
+def save_answer(user_id: int, conversation_id: int, result: dict) -> int:
     """Bước 4: stream xong → lưu câu trả lời cuối (sau khi đã qua các lớp kiểm tra) kèm meta."""
     with Session(engine) as s, s.begin():
-        conv = _owned(s, client_id, conversation_id)
+        conv = _owned(s, user_id, conversation_id)
         meta = {k: v for k, v in result.items() if k != "answer"}
         msg = Message(conversation_id=conv.id, role="assistant", content=result["answer"], meta=meta)
         s.add(msg)
         conv.updated_at = utcnow()
         s.flush()
         return msg.id
+
+
+# ---------- người dùng (logic đăng nhập ở auth.py) ----------
+def normalize_email(email: str) -> str:
+    return email.strip().lower()
+
+
+def get_user(user_id: int) -> dict | None:
+    with Session(engine) as s:
+        user = s.get(User, user_id)
+        return user_dict(user) if user and user.is_active else None

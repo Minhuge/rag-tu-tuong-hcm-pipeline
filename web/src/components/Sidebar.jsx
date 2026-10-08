@@ -1,4 +1,4 @@
-import { Plus, Trash, X } from '@phosphor-icons/react'
+import { Plus, SignOut, Trash, X } from '@phosphor-icons/react'
 import { useEffect, useRef } from 'react'
 
 const DAY = 86400000
@@ -29,6 +29,7 @@ function groupByDay(conversations) {
  */
 export default function Sidebar({
   conversations, activeId, pendingId, listState, onReload, onSelect, onNew, onDelete, narrow, open, onClose,
+  user, onLogout,
 }) {
   const newRef = useRef(null)
   const hidden = narrow && !open
@@ -112,7 +113,19 @@ export default function Sidebar({
           )}
         </nav>
 
-        <p className="history-note">Lịch sử lưu trên máy chủ, gắn với trình duyệt này.</p>
+        <div className="account">
+          <span className="account-avatar" aria-hidden="true">
+            {(user.display_name || user.email).trim().charAt(0).toUpperCase()}
+          </span>
+          <div className="account-info">
+            <span className="account-name">{user.display_name || user.email.split('@')[0]}</span>
+            <span className="account-email" title={user.email}>{user.email}</span>
+          </div>
+          <button type="button" className="ghost icon-only account-out" onClick={onLogout} aria-label="Đăng xuất"
+            title="Đăng xuất">
+            <SignOut size={17} aria-hidden="true" />
+          </button>
+        </div>
       </aside>
     </>
   )

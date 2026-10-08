@@ -9,16 +9,19 @@ from sqlalchemy.orm import Session
 
 import db
 
-A, B = "client-aaaa", "client-bbbb"
+A, B = 1, 2      # id của hai người dùng tạo sẵn trong fixture
 
 
 @pytest.fixture(autouse=True)
 def temp_db(db_engine):
+    with Session(db_engine) as s, s.begin():
+        s.add_all([db.User(id=A, email="a@example.com", password_hash="x"),
+                   db.User(id=B, email="b@example.com", password_hash="x")])
     return db_engine
 
 
-def answer(conv_id, text, client=A, **meta):
-    return db.save_answer(client, conv_id, {"answer": text, "sources": [], **meta})
+def answer(conv_id, text, user=A, **meta):
+    return db.save_answer(user, conv_id, {"answer": text, "sources": [], **meta})
 
 
 def test_first_message_creates_conversation():
@@ -74,7 +77,7 @@ def test_retry_does_not_duplicate_user_message():
     assert len(db.get_conversation(A, conv["id"])["messages"]) == 2
 
 
-def test_clients_only_see_their_own_conversations():
+def test_users_only_see_their_own_conversations():
     conv, _ = db.begin_turn(A, None, "Của A")
     db.begin_turn(B, None, "Của B")
     assert [c["title"] for c in db.list_conversations(A)] == ["Của A"]
@@ -101,3 +104,22 @@ def test_delete_removes_messages(temp_db):
     assert db.list_conversations(A) == []
     with Session(temp_db) as s:
         assert s.scalar(select(func.count()).select_from(db.Message)) == 0
+
+
+# ---------- người dùng ----------
+def test_deleting_user_deletes_their_conversations(temp_db):
+    conv, _ = db.begin_turn(A, None, "Câu 1")
+    answer(conv["id"], "Đáp 1")
+    db.begin_turn(B, None, "Của B")
+    with Session(temp_db) as s, s.begin():
+        s.delete(s.get(db.User, A))
+    assert db.list_conversations(A) == [] and len(db.list_conversations(B)) == 1
+    with Session(temp_db) as s:
+        assert s.scalar(select(func.count()).select_from(db.Message)) == 1
+
+
+def test_get_user_hides_inactive_and_password_hash():
+    assert db.get_user(A)["email"] == "a@example.com" and "password_hash" not in db.get_user(A)
+    with Session(db.engine) as s, s.begin():
+        s.get(db.User, A).is_active = False
+    assert db.get_user(A) is None and db.get_user(999) is None

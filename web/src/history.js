@@ -1,20 +1,20 @@
-// Lịch sử chat giờ nằm trên máy chủ (SQLite chat.db, xem db.py). Trình duyệt chỉ nhớ đang mở
-// cuộc trò chuyện nào, để F5 mở lại đúng chỗ. Đọc/ghi localStorage lỗi thì bỏ qua.
-const ACTIVE_KEY = 'hcm-chat-active-id'
+// Lịch sử chat nằm trên máy chủ (PostgreSQL, xem db.py), theo tài khoản. Trình duyệt chỉ nhớ đang mở
+// cuộc trò chuyện nào, để F5 mở lại đúng chỗ — nhớ riêng cho từng tài khoản. Đọc/ghi localStorage lỗi thì bỏ qua.
+const activeKey = (userId) => `hcm-chat-active-id:${userId}`
 
-export function loadActiveId() {
+export function loadActiveId(userId) {
   try {
-    const id = Number(localStorage.getItem(ACTIVE_KEY))
+    const id = Number(localStorage.getItem(activeKey(userId)))
     return Number.isInteger(id) && id > 0 ? id : null
   } catch {
     return null
   }
 }
 
-export function saveActiveId(id) {
+export function saveActiveId(userId, id) {
   try {
-    if (id) localStorage.setItem(ACTIVE_KEY, String(id))
-    else localStorage.removeItem(ACTIVE_KEY)
+    if (id) localStorage.setItem(activeKey(userId), String(id))
+    else localStorage.removeItem(activeKey(userId))
   } catch {
     // bỏ qua
   }

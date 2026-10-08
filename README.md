@@ -160,3 +160,10 @@ Bước 3: bật trang web (terminal 2)
 
 cd /Users/pmhieu7/Documents/GitHub/rag-tu-tuong-hcm-pipeline/web
 npm run dev
+
+đăng nhập postgre
+docker exec -it postgres psql -U hcm -d hcm_chat
+\dt                      -- list all tables (users, conversations, messages)
+\d users                 -- show the columns of the users table
+SELECT * FROM users;     -- show every row
+\q                       -- quit

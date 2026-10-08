@@ -72,11 +72,11 @@ function HealthPill() {
   )
 }
 
-export default function App() {
+export default function App({ user, onLogout }) {
   const [conversations, setConversations] = useState([]) // tóm tắt từ máy chủ: { id, title, createdAt, updatedAt }
   const [listState, setListState] = useState('loading') // loading | ok | error
   // null = "Cuộc trò chuyện mới" chưa có câu hỏi nào; F5 mở lại cuộc đang xem (nhớ trong localStorage)
-  const [activeId, setActiveId] = useState(loadActiveId)
+  const [activeId, setActiveId] = useState(() => loadActiveId(user.id))
   const [threads, setThreads] = useState({}) // id (hoặc DRAFT) → tin nhắn đã tải, định dạng giao diện
   const [threadError, setThreadError] = useState(null)
   const [pending, setPending] = useState(null) // { key, startedAt, controller, step, text }
@@ -130,7 +130,7 @@ export default function App() {
     }
   }, [activeId, threads, threadError])
 
-  useEffect(() => saveActiveId(activeId), [activeId])
+  useEffect(() => saveActiveId(user.id, activeId), [user.id, activeId])
 
   useEffect(() => {
     const reduce = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
@@ -172,6 +172,13 @@ export default function App() {
     setUndo({ conversation, wasActive: id === activeId })
     setConversations((cs) => cs.filter((c) => c.id !== id))
     if (id === activeId) setActiveId(null)
+  }
+
+  // Đăng xuất: dừng câu hỏi đang chờ, xoá luôn mục đang chờ hoàn tác (request gửi đi trước khi mất token)
+  const signOut = () => {
+    pending?.controller.abort()
+    if (undoRef.current) commitDelete(undoRef.current)
+    onLogout()
   }
 
   const restore = () => {
@@ -273,6 +280,8 @@ export default function App() {
         narrow={narrow}
         open={narrow && drawerOpen}
         onClose={closeDrawer}
+        user={user}
+        onLogout={signOut}
       />
       <div className="app">
         <header className="topbar">
