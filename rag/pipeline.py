@@ -33,6 +33,7 @@ import time
 from contextlib import nullcontext
 from dataclasses import asdict, dataclass, field
 
+import httpx
 from dotenv import load_dotenv
 from google import genai
 from google.genai import errors as genai_errors
@@ -43,7 +44,7 @@ from rag.guards import (
     basic_input_check, build_context, build_system_prompt, check_citations, clean_rewrite, format_history,
     input_policy, is_refusal, source_label,
 )
-from rag.search_rerank import TOP_N, Retriever, qdrant_search, retrieval_guard
+from rag.search_rerank import EMBED_TIMEOUT, TOP_N, Retriever, qdrant_search, retrieval_guard
 
 load_dotenv()
 
@@ -58,6 +59,20 @@ DEBUG_GUARDS = os.getenv("DEBUG_GUARDS", "").lower() in ("1", "true", "yes")
 
 FALLBACK_TEXT = ("Mình chưa tìm được câu trả lời đủ chắc chắn từ giáo trình. "
                  "Bạn có thể đọc trực tiếp các đoạn liên quan trong phần nguồn.")
+
+# Guard / tìm kiếm chạy trên GPU: quá giới hạn (thường do GPU thiếu bộ nhớ) thì báo lỗi thay vì treo mãi.
+STAGE_TIMEOUT = float(os.getenv("STAGE_TIMEOUT", "60"))
+EMBED_ERROR = (f"Ollama không phản hồi khi tạo embedding (quá {EMBED_TIMEOUT:.0f} s). Thử lại sau ít giây; "
+               "nếu vẫn lỗi, khởi động lại Ollama (GPU có thể đang thiếu bộ nhớ).")
+
+
+async def _within(task: asyncio.Task, what: str):
+    """Chờ một bước chạy trong thread tối đa STAGE_TIMEOUT giây; quá thì báo lỗi dễ hiểu (thread vẫn chạy nốt)."""
+    try:
+        return await asyncio.wait_for(asyncio.shield(task), STAGE_TIMEOUT)
+    except TimeoutError:
+        task.add_done_callback(lambda t: t.cancelled() or t.exception())   # tránh cảnh báo lỗi không ai đọc
+        raise RuntimeError(f"{what} quá {STAGE_TIMEOUT:.0f} s (GPU có thể đang quá tải). Thử lại sau ít giây.") from None
 
 
 @dataclass
@@ -109,7 +124,10 @@ class GuardedRAG:
 
     def _retrieval_job(self, question: str):
         t0 = time.perf_counter()
-        cands = qdrant_search(self.retriever.client, self.retriever.embedder, question)  # không dùng torch
+        try:
+            cands = qdrant_search(self.retriever.client, self.retriever.embedder, question)  # không dùng torch
+        except (httpx.TimeoutException, httpx.ConnectError) as e:   # Ollama treo / chưa chạy
+            raise RuntimeError(EMBED_ERROR) from e
         t1 = time.perf_counter()
         with self._gpu():
             ranked = self.retriever.reranker.rerank(question, cands, top_n=TOP_N)
@@ -283,7 +301,7 @@ class GuardedRAG:
         retr_task = None if history else asyncio.create_task(asyncio.to_thread(self._retrieval_job, question))
 
         try:
-            g, tm["guard_s"] = await guard_task
+            g, tm["guard_s"] = await _within(guard_task, "Bước kiểm tra an toàn (Qwen3Guard)")
             policy = input_policy(g)
             if policy == "block":
                 if rewrite_task:
@@ -301,7 +319,7 @@ class GuardedRAG:
                 search_q, tm["rewrite_s"] = await rewrite_task
                 retr_task = asyncio.create_task(asyncio.to_thread(self._retrieval_job, search_q))
             yield {"type": "status", "step": "retrieve"}
-            ranked, rt = await retr_task
+            ranked, rt = await _within(retr_task, "Bước tìm kiếm trong giáo trình")
             tm.update(rt)
         finally:
             # Người dùng bấm Dừng / đóng trang giữa chừng → huỷ việc viết lại câu hỏi đang chờ Gemini
