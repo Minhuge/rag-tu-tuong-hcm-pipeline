@@ -2,7 +2,7 @@
 Liệt kê các model Gemini mà API key của bạn gọi được (lấy đúng tên để điền GEMINI_MODEL).
 Lệnh này KHÔNG tốn lượt generate_content.
 
-Chạy:  python list_models.py
+Chạy:  python -m scripts.list_models
 """
 from dotenv import load_dotenv
 from google import genai

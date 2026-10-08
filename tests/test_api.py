@@ -1,15 +1,16 @@
 """
-Test các endpoint lịch sử chat của api.py với pipeline giả → không nạp model, không tốn quota Gemini.
+Test các endpoint lịch sử chat (app/routers/chat.py) với pipeline giả → không nạp model, không tốn quota Gemini.
 
-Chạy:  pytest -q test_api.py
+Chạy:  pytest -q tests/test_api.py
 """
 import json
 
 import pytest
 from fastapi.testclient import TestClient
 
-import api
-import auth
+from app import deps
+from app import main as api
+from app import auth
 
 
 class FakeRAG:
@@ -32,7 +33,7 @@ class FakeRAG:
 @pytest.fixture
 def client(db_engine, monkeypatch):
     fake = FakeRAG()
-    monkeypatch.setattr(api, "rag", fake)
+    monkeypatch.setattr(deps, "rag", fake)
     c = TestClient(api.app)        # không dùng "with" → không chạy lifespan (không nạp model thật)
     c.fake = fake
     return c

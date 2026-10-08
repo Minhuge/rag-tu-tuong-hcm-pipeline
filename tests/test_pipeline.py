@@ -2,15 +2,15 @@
 Test luồng điều phối GuardedRAG.ask() theo sơ đồ 1a → 1b → 2 → 3 → 4c → 4a,
 thay guard / Qdrant / reranker / Gemini bằng đồ giả → không nạp model, không tốn quota.
 
-Chạy:  pytest -q test_pipeline.py
+Chạy:  pytest -q tests/test_pipeline.py
 """
 import asyncio
 
 import pytest
 
-import pipeline
-from guards import REFUSAL_TEXT, GroundCheck, GuardResult
-from pipeline import FALLBACK_TEXT, GuardedRAG
+from rag import pipeline
+from rag.guards import REFUSAL_TEXT, GroundCheck, GuardResult
+from rag.pipeline import FALLBACK_TEXT, GuardedRAG
 
 
 class FakeGuard:

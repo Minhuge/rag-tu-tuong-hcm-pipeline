@@ -1,6 +1,6 @@
 # Web chat (React + Vite)
 
-Giao diện chat cho `api.py`. Mỗi câu trả lời hiển thị:
+Giao diện chat cho backend FastAPI (`app/`). Mỗi câu trả lời hiển thị:
 
 - câu trả lời (markdown), trích dẫn `[Chương X, trang Y]` thành chip bấm được → mở và tô sáng đoạn giáo trình tương ứng
   (chip màu vàng = trích dẫn không khớp nguồn nào);
@@ -13,7 +13,7 @@ Lịch sử chat lưu trong `localStorage` của trình duyệt (nút "Cuộc tr
 
 ```bash
 # backend (thư mục gốc)
-uvicorn api:app --port 8000
+uvicorn app.main:app --port 8000
 
 # Cách 1 — dev, có hot reload: http://localhost:5173 (Vite proxy /ask, /search, /health → :8000)
 cd web

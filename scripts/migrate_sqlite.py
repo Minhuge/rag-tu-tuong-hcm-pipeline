@@ -6,8 +6,8 @@ không ghi đè. chat.db không bị sửa hay xoá.
 
 Chỉ dùng được với schema TRƯỚC khi có đăng nhập (đã chạy xong) — bảng conversations giờ cần user_id (xem migrate_auth.py).
 
-Chạy:  python migrate_sqlite.py              # đọc ./chat.db
-       python migrate_sqlite.py đường/dẫn.db
+Chạy:  python -m scripts.migrate_sqlite              # đọc ./chat.db
+       python -m scripts.migrate_sqlite đường/dẫn.db
 """
 import os
 import sys
@@ -15,7 +15,7 @@ from datetime import timezone
 
 from sqlalchemy import create_engine, func, insert, select, text
 
-import db
+from app import db
 
 
 def utc(row: dict) -> dict:
@@ -25,7 +25,7 @@ def utc(row: dict) -> dict:
 
 
 def main():
-    path = sys.argv[1] if len(sys.argv) > 1 else os.path.join(os.path.dirname(os.path.abspath(__file__)), "chat.db")
+    path = sys.argv[1] if len(sys.argv) > 1 else os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "chat.db")
     if not os.path.exists(path):
         sys.exit(f"Không thấy {path}")
     db.init_db()   # tạo bảng trong Postgres nếu chưa có

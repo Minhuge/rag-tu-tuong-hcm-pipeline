@@ -24,7 +24,7 @@ Tuỳ chọn:  GEMINI_MODEL=gemini-3.8-flash   GEMINI_THINKING=low   GUARD_DEVIC
            GEMINI_FALLBACK_MODELS=gemini-3.6-flash,gemini-flash-latest  (dùng khi model chính quá tải)
            DEBUG_GUARDS=1  (in ra terminal những gì lớp 1b và lớp 2 nhìn thấy)
 
-Chạy demo:  python pipeline.py
+Chạy demo:  python -m rag.pipeline
 """
 import asyncio
 import os
@@ -38,12 +38,12 @@ from google import genai
 from google.genai import errors as genai_errors
 from google.genai import types
 
-from guards import (
+from rag.guards import (
     JUDGE_PROMPT, JUDGE_SYSTEM, REFUSAL_TEXT, REWRITE_PROMPT, REWRITE_SYSTEM, GroundCheck, Qwen3Guard,
     basic_input_check, build_context, build_system_prompt, check_citations, clean_rewrite, format_history,
     input_policy, is_refusal, source_label,
 )
-from search_rerank import TOP_N, Retriever, qdrant_search, retrieval_guard
+from rag.search_rerank import TOP_N, Retriever, qdrant_search, retrieval_guard
 
 load_dotenv()
 

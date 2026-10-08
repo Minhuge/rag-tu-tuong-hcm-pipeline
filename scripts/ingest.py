@@ -172,7 +172,8 @@ def upsert_chunks(client: QdrantClient, chunks_data: list, batch_size: int = 100
 
 
 if __name__ == "__main__":
-    docs = load_document("Giao_trinh_Tu_tuong_HCM.pdf")
+    ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    docs = load_document(os.path.join(ROOT, "data", "Giao_trinh_Tu_tuong_HCM.pdf"))
     chunks = chunk_documents(docs)
     data = build_chunks_with_metadata(chunks)
     print(f"Tổng số chunk: {len(data)}")

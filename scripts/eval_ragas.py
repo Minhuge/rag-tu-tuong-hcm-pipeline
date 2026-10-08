@@ -1,7 +1,7 @@
 """
 Đánh giá chất lượng câu trả lời bằng RAGAS (Gemini làm giám khảo).
 
-  1. Chạy pipeline thật (GuardedRAG.ask) cho từng câu trong eval_testset.json
+  1. Chạy pipeline thật (GuardedRAG.ask) cho từng câu trong data/eval_testset.json
   2. Chấm các câu ĐÃ TRẢ LỜI bằng các chỉ số RAGAS, mỗi chỉ số chỉ ra một bộ phận cần sửa:
        faithfulness        (0–1) câu trả lời có bịa ngoài tài liệu không        → thấp: sửa prompt lớp 3 / giám khảo 4a
        answer_relevancy    (0–1) có trả lời đúng câu được hỏi không             → thấp: lạc đề, trả lời lấp lửng
@@ -10,11 +10,11 @@
        context_recall      (0–1) chunk tìm được có đủ ý của đáp án chuẩn không  → thấp: retrieval bỏ sót
        factual_correctness (0–1) câu trả lời khớp đáp án chuẩn tới đâu          → thấp: sai so với sự thật
   3. Kiểm tra từ chối: câu "expect": "answer" bị từ chối (bỏ sót) / câu "expect": "refuse" lại được trả lời (lọt)
-  4. Lưu eval_runs/<thời điểm>.json kèm cấu hình → sửa pipeline rồi chạy lại để so sánh
+  4. Lưu data/eval_runs/<thời điểm>.json kèm cấu hình → sửa pipeline rồi chạy lại để so sánh
 
-Chạy:  python eval_ragas.py                          # toàn bộ testset (nạp model + gọi Gemini)
-       python eval_ragas.py --limit 3                # thử nhanh 3 câu đầu
-       python eval_ragas.py --rescore eval_runs/X.json   # chấm lại câu trả lời đã lưu, không chạy pipeline
+Chạy:  python -m scripts.eval_ragas                          # toàn bộ testset (nạp model + gọi Gemini)
+       python -m scripts.eval_ragas --limit 3                # thử nhanh 3 câu đầu
+       python -m scripts.eval_ragas --rescore data/eval_runs/X.json # chấm lại câu trả lời đã lưu, không chạy pipeline
 
 Chi phí: mỗi câu đã trả lời ≈ 1–3 lần gọi Gemini cho pipeline + ~8 lần cho RAGAS (thêm ~5 nếu có reference).
 Kết quả gọi giám khảo được cache trong .ragas_cache/ → chấm lại câu không đổi thì không tốn lượt.
@@ -46,12 +46,13 @@ from ragas.metrics.collections import (
     AnswerRelevancy, ContextRecall, ContextRelevance, FactualCorrectness, Faithfulness,
 )
 
-import search_rerank
-from guards import is_refusal
-from pipeline import GEMINI_MODEL, GuardedRAG
+from rag import search_rerank
+from rag.guards import is_refusal
+from rag.pipeline import GEMINI_MODEL, GuardedRAG
 
-TESTSET = "eval_testset.json"
-RUNS_DIR = "eval_runs"
+ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+TESTSET = os.path.join(ROOT, "data", "eval_testset.json")
+RUNS_DIR = os.path.join(ROOT, "data", "eval_runs")
 JUDGE_MODEL = os.getenv("RAGAS_MODEL", GEMINI_MODEL)
 REFUSED = {"input-basic", "input-guard", "retrieval"}
 
@@ -84,7 +85,7 @@ def make_metrics(embedder) -> tuple[dict, dict]:
     llm = InstructorLLM(
         client=instructor.from_genai(genai.Client(), mode=instructor.Mode.GENAI_STRUCTURED_OUTPUTS, use_async=True),
         model=JUDGE_MODEL, provider="google", model_args=InstructorModelArgs(max_tokens=8192),
-        cache=DiskCacheBackend(".ragas_cache"))
+        cache=DiskCacheBackend(os.path.join(ROOT, ".ragas_cache")))
     relevancy = AnswerRelevancy(llm=llm, embeddings=OllamaEmbedding(embedder))
     # Prompt gốc toàn tiếng Anh → model hay sinh câu hỏi tiếng Anh, so cosine với câu tiếng Việt bị thấp oan.
     relevancy.prompt.instruction += "\nWrite the question in the same language as the answer."
@@ -190,7 +191,7 @@ def config_snapshot() -> dict:
 async def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--limit", type=int, help="chỉ chạy N câu đầu")
-    ap.add_argument("--rescore", help="chấm lại file eval_runs/*.json đã lưu, không chạy pipeline")
+    ap.add_argument("--rescore", help="chấm lại file data/eval_runs/*.json đã lưu, không chạy pipeline")
     args = ap.parse_args()
 
     if args.rescore:

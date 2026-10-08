@@ -40,10 +40,10 @@ Xoá đề → xoá dây chuyền câu hỏi, lựa chọn, bài làm và câu t
 đã chọn nó còn lại với selected_option_id = NULL (không mất bài làm).
 Băm mật khẩu, JWT và đăng nhập nằm ở auth.py; file này chỉ lưu và đọc dữ liệu.
 
-Session SQLAlchemy ở đây là đồng bộ; api.py gọi các hàm này qua asyncio.to_thread.
+Session SQLAlchemy ở đây là đồng bộ; app/routers/chat.py gọi các hàm này qua asyncio.to_thread.
 
 .env cần:  DATABASE_URL=postgresql+psycopg://user:mật_khẩu@localhost:5432/hcm_chat
-Bảng được tạo lúc khởi động API (init_db). Database tạo trước khi có đăng nhập: python migrate_auth.py
+Bảng được tạo lúc khởi động API (init_db). Database tạo trước khi có đăng nhập: python -m scripts.migrate_auth
 Test chạy trên SQLite tạm (xem conftest.py), không cần Postgres.
 """
 import os
@@ -277,7 +277,7 @@ def init_db():
     cols = inspect(engine)
     for table, column in _MIGRATED_COLUMNS.items():
         if column not in {c["name"] for c in cols.get_columns(table)}:
-            raise RuntimeError(f"Bảng {table} chưa có cột {column} → chạy: python migrate_auth.py")
+            raise RuntimeError(f"Bảng {table} chưa có cột {column} → chạy: python -m scripts.migrate_auth")
 
 
 # ---------- chuyển sang dict để trả về JSON ----------

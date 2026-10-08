@@ -2,15 +2,15 @@
 Tạo tài khoản từ dòng lệnh, vd. tài khoản quản trị đầu tiên hoặc khi đã tắt đăng ký (ALLOW_REGISTRATION=false).
 Mật khẩu nhập ẩn hai lần → không nằm trong lịch sử shell.
 
-Chạy:  python create_user.py admin@example.com --admin --name "Quản trị"
-       python create_user.py ban@example.com
+Chạy:  python -m scripts.create_user admin@example.com --admin --name "Quản trị"
+       python -m scripts.create_user ban@example.com
 """
 import argparse
 import getpass
 import sys
 
-import auth
-import db
+from app import auth
+from app import db
 
 
 def main():

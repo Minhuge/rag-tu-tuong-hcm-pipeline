@@ -16,7 +16,7 @@ Cấu hình qua .env (đều có giá trị mặc định):
 
 Payload mỗi point cần có key "text" (và nên có "chunk_id", "chapter", "page").
 
-Chạy:  python search_rerank.py
+Chạy:  python -m rag.search_rerank
 """
 import os
 import time
@@ -26,7 +26,7 @@ from dotenv import load_dotenv
 from langchain_ollama import OllamaEmbeddings
 from qdrant_client import QdrantClient, models
 
-from reranker import Qwen3Reranker
+from rag.reranker import Qwen3Reranker
 
 load_dotenv()
 

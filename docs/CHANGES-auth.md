@@ -1,5 +1,7 @@
 # Thay đổi: đăng nhập bằng JWT
 
+> **Ghi chú:** tài liệu này viết trước khi sắp xếp lại thư mục (08/10/2026). Tên file cũ như `api.py`, `db.py`, `pipeline.py`, `test_*.py` nay nằm trong `app/`, `rag/`, `scripts/`, `tests/` — xem phần *Cấu trúc* trong [README](../README.md). Các lệnh chạy bên dưới đã được cập nhật theo đường dẫn mới.
+
 Tài liệu này liệt kê các thay đổi làm ngày 07/10/2026, tiếp nối [CHANGES-guardrail-postgres-ragas.md](CHANGES-guardrail-postgres-ragas.md). Tất cả **chưa được commit**, nằm trên nhánh `feature/postgres-ragas-guard` tính từ commit `c5febfc`.
 
 ## Tóm tắt
@@ -153,11 +155,11 @@ Thiết kế theo skill **ui-ux-pro-max** (cài bằng `npx uipro-cli init --ai 
 
 1. **Nâng cấp database thật.** Chưa chạy, vì cần email và mật khẩu của bạn:
    ```bash
-   python migrate_auth.py                          # bước 1, báo chưa có quản trị viên
-   python create_user.py <email-của-bạn> --admin
-   python migrate_auth.py                          # gán 5 cuộc trò chuyện cũ cho bạn
+   python -m scripts.migrate_auth                          # bước 1, báo chưa có quản trị viên
+   python -m scripts.create_user <email-của-bạn> --admin
+   python -m scripts.migrate_auth                          # gán 5 cuộc trò chuyện cũ cho bạn
    ```
-   Chưa chạy bước này thì `uvicorn api:app` dừng với lỗi "Bảng conversations chưa có cột user_id → chạy: python migrate_auth.py".
+   Chưa chạy bước này thì `uvicorn app.main:app` dừng với lỗi "Bảng conversations chưa có cột user_id → chạy: python -m scripts.migrate_auth".
 
 2. **Chạy thử web trên trình duyệt.** Bạn tự thử:
    - đăng ký, đăng nhập sai và đúng;

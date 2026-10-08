@@ -10,10 +10,10 @@ rồi in điểm từng câu và ngưỡng tách 2 nhóm tốt nhất cho:
   cos_max   — cosine cao nhất trong 10 chunk Qdrant trả về
   rerank + cos_top — luật kết hợp: rerank ≥ a VÀ cos_top ≥ b
 
-Chạy:  uvicorn api:app   (terminal khác)
-       python calibrate.py                 # câu hỏi như đã viết
-       python calibrate.py --variants      # thêm bản viết thường, bỏ dấu "?" để xem điểm dao động
-       python calibrate.py --csv out.csv   # lưu điểm thô
+Chạy:  uvicorn app.main:app   (terminal khác)
+       python -m scripts.calibrate                 # câu hỏi như đã viết
+       python -m scripts.calibrate --variants      # thêm bản viết thường, bỏ dấu "?" để xem điểm dao động
+       python -m scripts.calibrate --csv out.csv   # lưu điểm thô
 """
 import argparse
 import csv
