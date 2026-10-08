@@ -34,6 +34,8 @@ EMBED_MODEL = "qwen3-embedding:4b"   # PHẢI trùng model đã dùng khi ingest
 # Câu hỏi chỉ vài chục token: context 1024 thay vì 4096 mặc định giúp Ollama giảm từ 4.8 GB
 # xuống 3.3 GB VRAM → reranker + guard vẫn nằm gọn trên GPU 6 GB (vector gần như không đổi).
 EMBED_NUM_CTX = int(os.getenv("EMBED_NUM_CTX", "1024"))
+# Ollama có lúc treo (VRAM gần cạn) → không đặt giới hạn thì request chờ mãi. Lần đầu nạp model mất ~10 s.
+EMBED_TIMEOUT = float(os.getenv("EMBED_TIMEOUT", "30"))
 COLLECTION = os.getenv("QDRANT_COLLECTION", "tu_tuong_hcm")
 
 # Cấu hình nhẹ cho Mac mini M1 (xem giải thích trong chat).
@@ -95,7 +97,8 @@ class Retriever:
     def __init__(self):
         self.client = get_qdrant()
         self.embedder = OllamaEmbeddings(model=EMBED_MODEL, num_ctx=EMBED_NUM_CTX,
-                                         keep_alive=-1)   # giữ model trong RAM
+                                         keep_alive=-1,   # giữ model trong RAM
+                                         client_kwargs={"timeout": EMBED_TIMEOUT})
         self.reranker = Qwen3Reranker(max_length=RERANK_MAX_LEN, batch_size=CANDIDATES)
 
     def warmup(self):
