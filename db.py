@@ -15,8 +15,29 @@ Lưu lịch sử chat vào PostgreSQL bằng SQLAlchemy.
                          id (PK), token_hash (SHA-256, không lưu token gốc),
                          created_at, expires_at, revoked_at
 
+  Đề thi (người dùng nào cũng tạo được đề và làm đề):
+
+  exams ──1:N── questions ──1:N── question_options
+    │               │                   │ (0..1)
+   1:N             1:N                 0:N
+    │               │                   │
+  submissions ──1:N── submission_answers ┘
+    │
+  users (người làm bài, user_id) — exams.created_by cũng trỏ về users
+
+  exams              : created_by, title, description, visibility ("private"/"link"/"public"),
+                       share_code (unique), duration_minutes, shuffle_questions, open_at, close_at
+  questions          : exam_id, type ("mcq"/"essay"), order_index, content, rubric (chỉ essay), points
+  question_options   : question_id, label ("A".."D"), content, is_correct, order_index   (chỉ mcq)
+  submissions        : exam_id, user_id, status ("in_progress"/"submitted"/"graded"),
+                       score, max_score, started_at, submitted_at, graded_at
+  submission_answers : submission_id, question_id, selected_option_id (mcq) / essay_text (essay),
+                       score, feedback, graded_at — mỗi bài làm trả lời mỗi câu tối đa 1 lần
+
 Mỗi người chỉ thấy cuộc trò chuyện của chính mình (user_id). Xoá user → xoá dây chuyền
-cuộc trò chuyện, tin nhắn và refresh token của người đó.
+cuộc trò chuyện, tin nhắn, refresh token, đề thi người đó tạo và bài làm của người đó.
+Xoá đề → xoá dây chuyền câu hỏi, lựa chọn, bài làm và câu trả lời. Xoá một lựa chọn → câu trả lời
+đã chọn nó còn lại với selected_option_id = NULL (không mất bài làm).
 Băm mật khẩu, JWT và đăng nhập nằm ở auth.py; file này chỉ lưu và đọc dữ liệu.
 
 Session SQLAlchemy ở đây là đồng bộ; api.py gọi các hàm này qua asyncio.to_thread.
@@ -29,7 +50,8 @@ import os
 from datetime import datetime, timezone
 
 from dotenv import load_dotenv
-from sqlalchemy import JSON, Boolean, DateTime, ForeignKey, String, Text, create_engine, false, inspect, select
+from sqlalchemy import (JSON, Boolean, CheckConstraint, DateTime, Float, ForeignKey, Index, Integer, String, Text,
+                        UniqueConstraint, create_engine, false, inspect, select, text)
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import DeclarativeBase, Mapped, Session, mapped_column, relationship
 
@@ -63,6 +85,10 @@ class Base(DeclarativeBase):
     pass
 
 
+# JSON trên SQLite (test), JSONB trên Postgres (truy vấn được bên trong, có index)
+JSONType = JSON().with_variant(JSONB(), "postgresql")
+
+
 class Conversation(Base):
     __tablename__ = "conversations"
 
@@ -83,7 +109,7 @@ class Message(Base):
     conversation_id: Mapped[int] = mapped_column(ForeignKey("conversations.id", ondelete="CASCADE"), index=True)
     role: Mapped[str] = mapped_column(String(16))     # "user" / "assistant"
     content: Mapped[str] = mapped_column(Text)
-    meta: Mapped[dict | None] = mapped_column(JSON().with_variant(JSONB(), "postgresql"), nullable=True)
+    meta: Mapped[dict | None] = mapped_column(JSONType, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 
     conversation: Mapped[Conversation] = relationship(back_populates="messages")
@@ -112,6 +138,132 @@ class RefreshToken(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
     expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
     revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
+# ---------- đề thi ----------
+EXAM_VISIBILITY = ("private", "link", "public")   # chỉ người tạo / ai có share_code / mọi người
+QUESTION_TYPES = ("mcq", "essay")                  # trắc nghiệm / tự luận
+SUBMISSION_STATUS = ("in_progress", "submitted", "graded")
+
+
+def _one_of(column: str, values: tuple[str, ...]) -> str:
+    return f"{column} IN ({', '.join(repr(v) for v in values)})"
+
+
+class Exam(Base):
+    __tablename__ = "exams"
+    __table_args__ = (
+        CheckConstraint(_one_of("visibility", EXAM_VISIBILITY), name="ck_exams_visibility"),
+        CheckConstraint("duration_minutes IS NULL OR duration_minutes > 0", name="ck_exams_duration"),
+        CheckConstraint("open_at IS NULL OR close_at IS NULL OR close_at > open_at", name="ck_exams_window"),
+    )
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    created_by: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
+    title: Mapped[str] = mapped_column(String(200))
+    description: Mapped[str | None] = mapped_column(Text, nullable=True)
+    visibility: Mapped[str] = mapped_column(String(16), default="private", server_default="private")
+    # Mã chia sẻ cho visibility="link"; NULL được lặp lại, giá trị thật thì không trùng
+    share_code: Mapped[str | None] = mapped_column(String(32), unique=True, nullable=True)
+    duration_minutes: Mapped[int | None] = mapped_column(Integer, nullable=True)     # NULL = không giới hạn
+    shuffle_questions: Mapped[bool] = mapped_column(Boolean, default=False, server_default=false())
+    open_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)    # NULL = mở ngay
+    close_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)   # NULL = không đóng
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, onupdate=utcnow)
+
+    questions: Mapped[list["Question"]] = relationship(
+        back_populates="exam", cascade="all, delete-orphan", order_by="Question.order_index")
+    submissions: Mapped[list["Submission"]] = relationship(
+        back_populates="exam", cascade="all, delete-orphan", passive_deletes=True)
+
+
+class Question(Base):
+    __tablename__ = "questions"
+    __table_args__ = (
+        CheckConstraint(_one_of("type", QUESTION_TYPES), name="ck_questions_type"),
+        CheckConstraint("points >= 0", name="ck_questions_points"),
+        Index("ix_questions_exam_order", "exam_id", "order_index"),
+    )
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    exam_id: Mapped[int] = mapped_column(ForeignKey("exams.id", ondelete="CASCADE"))
+    type: Mapped[str] = mapped_column(String(16))
+    order_index: Mapped[int] = mapped_column(Integer)
+    content: Mapped[str] = mapped_column(Text)
+    rubric: Mapped[str | None] = mapped_column(Text, nullable=True)                  # chỉ essay: hướng dẫn chấm
+    points: Mapped[float] = mapped_column(Float, default=1.0, server_default="1")
+
+    exam: Mapped[Exam] = relationship(back_populates="questions")
+    options: Mapped[list["QuestionOption"]] = relationship(
+        back_populates="question", cascade="all, delete-orphan", order_by="QuestionOption.order_index")
+
+
+class QuestionOption(Base):
+    """Một lựa chọn của câu trắc nghiệm. Mỗi câu có tối đa một lựa chọn đúng (chọn một đáp án)."""
+    __tablename__ = "question_options"
+    __table_args__ = (
+        UniqueConstraint("question_id", "label", name="uq_question_options_label"),
+        Index("ix_question_options_question_order", "question_id", "order_index"),
+        # chỉ một dòng is_correct = true cho mỗi câu — partial unique index (Postgres và SQLite đều hỗ trợ)
+        Index("ux_question_options_one_correct", "question_id", unique=True,
+              postgresql_where=text("is_correct"), sqlite_where=text("is_correct")),
+    )
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    question_id: Mapped[int] = mapped_column(ForeignKey("questions.id", ondelete="CASCADE"))
+    label: Mapped[str] = mapped_column(String(8))                                    # "A", "B", "C", "D"
+    content: Mapped[str] = mapped_column(Text)
+    is_correct: Mapped[bool] = mapped_column(Boolean, default=False, server_default=false())
+    order_index: Mapped[int] = mapped_column(Integer)
+
+    question: Mapped[Question] = relationship(back_populates="options")
+
+
+class Submission(Base):
+    __tablename__ = "submissions"
+    __table_args__ = (
+        CheckConstraint(_one_of("status", SUBMISSION_STATUS), name="ck_submissions_status"),
+    )
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    exam_id: Mapped[int] = mapped_column(ForeignKey("exams.id", ondelete="CASCADE"), index=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
+    status: Mapped[str] = mapped_column(String(16), default="in_progress", server_default="in_progress")
+    score: Mapped[float | None] = mapped_column(Float, nullable=True)
+    max_score: Mapped[float | None] = mapped_column(Float, nullable=True)
+    started_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    submitted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    graded_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+    exam: Mapped[Exam] = relationship(back_populates="submissions")
+    answers: Mapped[list["SubmissionAnswer"]] = relationship(
+        back_populates="submission", cascade="all, delete-orphan", passive_deletes=True)
+
+
+class SubmissionAnswer(Base):
+    """Câu trả lời cho một câu hỏi trong một bài làm: chọn một lựa chọn (mcq) hoặc viết bài (essay)."""
+    __tablename__ = "submission_answers"
+    __table_args__ = (
+        UniqueConstraint("submission_id", "question_id", name="uq_submission_answers_question"),
+        CheckConstraint("selected_option_id IS NULL OR essay_text IS NULL", name="ck_submission_answers_one_kind"),
+        CheckConstraint("score IS NULL OR score >= 0", name="ck_submission_answers_score"),
+    )
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    submission_id: Mapped[int] = mapped_column(ForeignKey("submissions.id", ondelete="CASCADE"))
+    question_id: Mapped[int] = mapped_column(ForeignKey("questions.id", ondelete="CASCADE"), index=True)
+    # Xoá lựa chọn → giữ câu trả lời, chỉ bỏ liên kết. Lựa chọn phải thuộc đúng question_id: kiểm tra ở code ghi bài.
+    selected_option_id: Mapped[int | None] = mapped_column(
+        ForeignKey("question_options.id", ondelete="SET NULL"), nullable=True, index=True)
+    essay_text: Mapped[str | None] = mapped_column(Text, nullable=True)
+    score: Mapped[float | None] = mapped_column(Float, nullable=True)
+    feedback: Mapped[str | None] = mapped_column(Text, nullable=True)
+    graded_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+    submission: Mapped[Submission] = relationship(back_populates="answers")
+    question: Mapped[Question] = relationship()
+    selected_option: Mapped[QuestionOption | None] = relationship()
 
 
 # Cột được thêm sau khi bảng đã có dữ liệu → create_all không tự thêm, phải chạy migrate_auth.py.

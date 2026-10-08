@@ -5,6 +5,7 @@ Chạy:  pytest -q test_db.py
 """
 import pytest
 from sqlalchemy import func, select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 import db
@@ -123,3 +124,143 @@ def test_get_user_hides_inactive_and_password_hash():
     with Session(db.engine) as s, s.begin():
         s.get(db.User, A).is_active = False
     assert db.get_user(A) is None and db.get_user(999) is None
+
+
+# ---------- đề thi ----------
+def make_exam(s, created_by=A, **kw):
+    """Đề 2 câu: câu 0 tự luận (2 điểm), câu 1 trắc nghiệm A–D, đáp án đúng là B."""
+    exam = db.Exam(created_by=created_by, title="Kiểm tra chương 1", **kw)
+    mcq = db.Question(type="mcq", order_index=1, content="Câu 1?")
+    mcq.options = [db.QuestionOption(label=label, content=f"Lựa chọn {label}", is_correct=label == "B", order_index=i)
+                   for i, label in reversed(list(enumerate("ABCD")))]          # thêm ngược để thử sắp xếp
+    essay = db.Question(type="essay", order_index=0, content="Trình bày...", rubric="Nêu đủ 3 ý", points=2)
+    exam.questions = [mcq, essay]
+    s.add(exam)
+    s.flush()
+    return exam
+
+
+def by_type(exam, type_):
+    # Ngay trong session vừa tạo, exam.questions giữ thứ tự thêm vào; order_by chỉ áp dụng khi đọc lại từ DB
+    return next(q for q in exam.questions if q.type == type_)
+
+
+def make_submission(s, exam, user_id=B):
+    """Bài làm trả lời cả hai câu: chọn B (đúng) và viết bài tự luận."""
+    essay, mcq = by_type(exam, "essay"), by_type(exam, "mcq")
+    correct = next(o for o in mcq.options if o.is_correct)
+    sub = db.Submission(exam_id=exam.id, user_id=user_id)
+    sub.answers = [db.SubmissionAnswer(question_id=mcq.id, selected_option_id=correct.id),
+                   db.SubmissionAnswer(question_id=essay.id, essay_text="Bài làm tự luận")]
+    s.add(sub)
+    s.flush()
+    return sub
+
+
+def count(s, model):
+    return s.scalar(select(func.count()).select_from(model))
+
+
+def test_exam_defaults_and_ordering(temp_db):
+    with Session(temp_db) as s, s.begin():
+        exam_id = make_exam(s).id
+    with Session(temp_db) as s, s.begin():
+        exam = s.get(db.Exam, exam_id)
+        assert exam.visibility == "private" and exam.shuffle_questions is False and exam.share_code is None
+        assert [q.type for q in exam.questions] == ["essay", "mcq"]          # sắp theo order_index
+        mcq = exam.questions[1]
+        assert [o.label for o in mcq.options] == ["A", "B", "C", "D"]         # sắp theo order_index
+        assert [o.label for o in mcq.options if o.is_correct] == ["B"] and exam.questions[0].points == 2
+        sub = make_submission(s, exam)
+        assert sub.status == "in_progress" and sub.score is None and sub.started_at is not None
+        sub_id = sub.id
+    with Session(temp_db) as s:
+        sub = s.get(db.Submission, sub_id)
+        picked = next(a for a in sub.answers if a.selected_option_id)
+        assert picked.selected_option.label == "B" and picked.question.type == "mcq"
+        assert next(a for a in sub.answers if a.essay_text).question.type == "essay"
+
+
+def test_deleting_exam_deletes_everything_under_it(temp_db):
+    with Session(temp_db) as s, s.begin():
+        exam = make_exam(s)
+        make_submission(s, exam)
+        exam_id = exam.id
+    with Session(temp_db) as s, s.begin():
+        s.delete(s.get(db.Exam, exam_id))
+    with Session(temp_db) as s:
+        for model in (db.Question, db.QuestionOption, db.Submission, db.SubmissionAnswer):
+            assert count(s, model) == 0, model.__name__
+
+
+def test_deleting_user_deletes_their_exams_and_submissions(temp_db):
+    with Session(temp_db) as s, s.begin():
+        own = make_exam(s, created_by=A)
+        other = make_exam(s, created_by=B)
+        make_submission(s, other, user_id=A)                  # A làm đề của B
+        make_submission(s, own, user_id=B)                    # B làm đề của A
+    with Session(temp_db) as s, s.begin():
+        s.delete(s.get(db.User, A))
+    with Session(temp_db) as s:
+        assert [e.created_by for e in s.scalars(select(db.Exam))] == [B]     # đề của B còn
+        assert count(s, db.Submission) == 0 and count(s, db.SubmissionAnswer) == 0
+        assert count(s, db.QuestionOption) == 4                               # chỉ còn lựa chọn của đề B
+
+
+def test_deleting_option_keeps_answer(temp_db):
+    with Session(temp_db) as s, s.begin():
+        exam = make_exam(s)
+        make_submission(s, exam)
+        mcq = by_type(exam, "mcq")
+        mcq.options.remove(next(o for o in mcq.options if o.label == "B"))   # xoá lựa chọn B
+    with Session(temp_db) as s:
+        assert count(s, db.SubmissionAnswer) == 2             # bài làm vẫn đủ 2 câu
+        assert s.scalars(select(db.SubmissionAnswer.selected_option_id)).all().count(None) == 2
+
+
+@pytest.mark.parametrize("model, kw", [
+    (db.Exam, {"visibility": "secret"}),
+    (db.Exam, {"duration_minutes": 0}),
+    (db.Exam, {"open_at": db.utcnow(), "close_at": db.utcnow().replace(year=2000)}),
+    (db.Question, {"type": "truefalse"}),
+    (db.Question, {"points": -1}),
+    (db.QuestionOption, {"label": "A"}),                     # trùng nhãn A trong cùng câu
+    (db.QuestionOption, {"label": "E", "is_correct": True}),  # câu đã có đáp án đúng B
+    (db.Submission, {"status": "cheating"}),
+    (db.SubmissionAnswer, {"question_id": "essay"}),          # câu này bài làm đã trả lời rồi
+    (db.SubmissionAnswer, {"selected_option_id": "B", "essay_text": "vừa chọn vừa viết"}),
+    (db.SubmissionAnswer, {"score": -1}),
+])
+def test_constraints_reject_invalid_rows(temp_db, model, kw):
+    with Session(temp_db) as s, s.begin():
+        exam = make_exam(s)
+        sub = make_submission(s, exam)
+        essay, mcq = by_type(exam, "essay"), by_type(exam, "mcq")
+        ids = {"exam": exam.id, "essay": essay.id, "mcq": mcq.id, "sub": sub.id,
+               "B": next(o.id for o in mcq.options if o.label == "B")}
+    kw = {k: ids.get(v, v) if isinstance(v, str) else v for k, v in kw.items()}
+    row = {
+        db.Exam: lambda: db.Exam(created_by=A, title="x", **kw),
+        db.Question: lambda: db.Question(exam_id=ids["exam"], order_index=9, content="x", **{"type": "mcq", **kw}),
+        db.QuestionOption: lambda: db.QuestionOption(question_id=ids["mcq"], content="x", order_index=9, **kw),
+        db.Submission: lambda: db.Submission(exam_id=ids["exam"], user_id=B, **kw),
+        db.SubmissionAnswer: lambda: db.SubmissionAnswer(submission_id=ids["sub"], **{"question_id": ids["mcq"], **kw}),
+    }[model]()
+    if model is db.SubmissionAnswer and "question_id" not in kw:
+        # câu mcq bài làm đã trả lời → tạo bài làm mới để chỉ kiểm tra đúng ràng buộc đang thử
+        with Session(temp_db) as s, s.begin():
+            new_sub = db.Submission(exam_id=ids["exam"], user_id=A)
+            s.add(new_sub)
+            s.flush()
+            row.submission_id = new_sub.id
+    with pytest.raises(IntegrityError), Session(temp_db) as s, s.begin():
+        s.add(row)
+
+
+def test_share_code_unique(temp_db):
+    with Session(temp_db) as s, s.begin():
+        make_exam(s, visibility="link", share_code="abc123")
+        make_exam(s)                                  # nhiều đề không có share_code (NULL) vẫn được
+        make_exam(s)
+    with pytest.raises(IntegrityError), Session(temp_db) as s, s.begin():
+        make_exam(s, visibility="link", share_code="abc123")
