@@ -19,7 +19,15 @@ accelerate>=1.0
 google-genai>=2.27
 pydantic>=2
 
-# API + test
+# API + lịch sử chat (PostgreSQL) + test
 fastapi>=0.115
+sqlalchemy>=2.0
+psycopg[binary]>=3.2
+pwdlib[argon2]>=0.3        # băm mật khẩu bảng users (Argon2)
+pyjwt>=2.9                 # access token đăng nhập (auth.py)
 uvicorn[standard]>=0.30
 pytest>=8
+
+# Đánh giá bằng RAGAS (eval_ragas.py) — jsonref cần cho structured output của Gemini qua instructor
+ragas==0.4.3
+jsonref>=1.1

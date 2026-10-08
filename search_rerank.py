@@ -3,7 +3,7 @@ Retrieve (Qdrant) → Rerank (Qwen3-Reranker) → Retrieval guardrail.
 
   1. Qdrant lấy CANDIDATES chunk (lấy rộng, ưu tiên không bỏ sót).
   2. Qwen3-Reranker chấm lại, giữ TOP_N chunk tốt nhất.
-  3. Retrieval guardrail dựa trên điểm cao nhất:
+  3. Retrieval guardrail dựa trên chunk đứng đầu sau rerank — cần CẢ P(yes) VÀ cosine của nó:
        pass    → đủ bằng chứng, cho LLM trả lời
        partial → chỉ có bằng chứng một phần, trả lời kèm lưu ý
        refuse  → giáo trình không đề cập, không gọi LLM
@@ -41,9 +41,14 @@ CANDIDATES = 10   # số chunk lấy từ Qdrant
 TOP_N = 4         # số chunk giữ lại sau rerank, đưa vào prompt cho LLM
 RERANK_MAX_LEN = 512
 
-# Ngưỡng tạm thời — PHẢI hiệu chỉnh lại bằng dữ liệu thật.
-MIN_TOP = 0.5         # top score ≥ MIN_TOP        → pass
-PARTIAL_BAND = 0.3    # PARTIAL_BAND ≤ top < MIN_TOP → partial, thấp hơn → refuse
+# Ngưỡng chọn từ calibrate.py (42 câu × 2 cách gõ): mọi câu giáo trình có P(yes) ≥ 0.97 và cosine ≥ 0.49,
+# câu lạc đề có cosine ≤ 0.43. Chỉ dùng P(yes) thì không tách được: reranker cho câu lạc đề
+# dùng chung chữ với giáo trình điểm rất cao ("đội bóng đoàn kết" 0.98, "gián có hại" 0.87),
+# nhưng cosine của chúng thấp. Thêm câu hỏi thật vào calibrate.py rồi chạy lại trước khi sửa.
+MIN_TOP = 0.9         # pass    khi P(yes) ≥ MIN_TOP      VÀ cosine ≥ MIN_COS
+MIN_COS = 0.45
+PARTIAL_BAND = 0.5    # partial khi P(yes) ≥ PARTIAL_BAND VÀ cosine ≥ PARTIAL_COS (ca sát ngưỡng:
+PARTIAL_COS = 0.40    #         Gemini trả lời kèm lưu ý, luôn có giám khảo), còn lại → refuse
 
 
 def get_qdrant() -> QdrantClient:
@@ -72,13 +77,14 @@ def qdrant_search(client: QdrantClient, embedder, question: str,
     ]
 
 
-def retrieval_guard(ranked: list[dict], min_top: float = MIN_TOP, partial: float = PARTIAL_BAND) -> str:
+def retrieval_guard(ranked: list[dict], min_top: float = MIN_TOP, min_cos: float = MIN_COS,
+                    partial: float = PARTIAL_BAND, partial_cos: float = PARTIAL_COS) -> str:
     if not ranked:
         return "refuse"
-    top = ranked[0]["rerank_score"]
-    if top >= min_top:
+    top, cos = ranked[0]["rerank_score"], ranked[0]["cosine"]
+    if top >= min_top and cos >= min_cos:
         return "pass"
-    if top >= partial:
+    if top >= partial and cos >= partial_cos:
         return "partial"
     return "refuse"
 

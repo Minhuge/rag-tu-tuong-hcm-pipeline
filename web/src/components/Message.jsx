@@ -222,14 +222,27 @@ const HINTS = [
   'Đang kiểm tra trích dẫn…',
 ]
 
-export function PendingMessage({ startedAt }) {
+// Bước thật do máy chủ báo về qua /chat (sự kiện status), thay cho gợi ý đoán theo thời gian
+const STEP_HINTS = {
+  guard: 'Đang kiểm tra an toàn câu hỏi…',
+  rewrite: 'Đang hiểu câu hỏi nối tiếp…',
+  retrieve: 'Đang tìm đoạn liên quan trong giáo trình…',
+  generate: 'Gemini đang soạn câu trả lời…',
+  judge: 'Đang kiểm tra câu trả lời có bám giáo trình không…',
+}
+
+function useElapsed(startedAt) {
   const [now, setNow] = useState(() => Date.now())
   useEffect(() => {
     const id = setInterval(() => setNow(Date.now()), 250)
     return () => clearInterval(id)
   }, [])
-  const elapsed = (now - startedAt) / 1000
-  const hint = HINTS[Math.min(HINTS.length - 1, Math.floor(elapsed / 1.6))]
+  return (now - startedAt) / 1000
+}
+
+export function PendingMessage({ startedAt, step }) {
+  const elapsed = useElapsed(startedAt)
+  const hint = STEP_HINTS[step] || HINTS[Math.min(HINTS.length - 1, Math.floor(elapsed / 1.6))]
   return (
     <div className="msg msg-ai">
       <Avatar />
@@ -239,6 +252,29 @@ export function PendingMessage({ startedAt }) {
         <span className="typing" aria-hidden="true"><i /><i /><i /></span>
         <span className="pending-hint" aria-hidden="true">{hint}</span>
         <span className="meta" aria-hidden="true">{elapsed.toFixed(1)} s</span>
+      </div>
+    </div>
+  )
+}
+
+// Chữ Gemini đang viết, hiện dần. Khi xong, App thay bằng AssistantMessage với câu trả lời cuối
+// (có thể đã được thay bằng câu an toàn nếu không qua bước kiểm tra trích dẫn / giám khảo).
+export function StreamingMessage({ startedAt, step, text }) {
+  const elapsed = useElapsed(startedAt)
+  if (!text) return <PendingMessage startedAt={startedAt} step={step} />
+  const checking = step === 'judge'
+  return (
+    <div className="msg msg-ai">
+      <Avatar />
+      <div className="card">
+        {/* Chữ đổi liên tục → ẩn với trình đọc màn hình; câu trả lời cuối sẽ được đọc khi xong */}
+        <span className="sr-only">Đang soạn câu trả lời, nhấn Esc để dừng.</span>
+        <div className={`answer ${checking ? '' : 'streaming'}`} aria-hidden="true">
+          <Markdown>{text}</Markdown>
+        </div>
+        <div className="trace-row" aria-hidden="true">
+          <span className="meta">{checking ? STEP_HINTS.judge : 'Đang viết…'} · {elapsed.toFixed(1)} s</span>
+        </div>
       </div>
     </div>
   )

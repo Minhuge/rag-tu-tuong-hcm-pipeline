@@ -12,6 +12,9 @@ export default defineConfig({
       '/ask': API,
       '/search': API,
       '/health': API,
+      '/chat': API, // trả về luồng NDJSON, proxy chuyển tiếp từng đoạn
+      '/conversations': API,
+      '/auth': API, // cookie refresh token có path=/auth
     },
   },
 })
