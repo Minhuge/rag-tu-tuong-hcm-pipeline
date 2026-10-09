@@ -22,7 +22,7 @@ def main():
 
     try:
         db.init_db()
-    except RuntimeError as e:      # thiếu DATABASE_URL / chưa chạy migrate_auth.py
+    except RuntimeError as e:      # thiếu DATABASE_URL
         sys.exit(str(e))
     password = getpass.getpass("Mật khẩu: ")
     if password != getpass.getpass("Nhập lại mật khẩu: "):
