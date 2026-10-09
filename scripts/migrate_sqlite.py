@@ -4,7 +4,7 @@ Chuyển lịch sử chat cũ từ SQLite (chat.db) sang PostgreSQL (DATABASE_UR
 Giữ nguyên id → trang web đang mở cuộc trò chuyện cũ vẫn mở được. Postgres đã có dữ liệu thì dừng,
 không ghi đè. chat.db không bị sửa hay xoá.
 
-Chỉ dùng được với schema TRƯỚC khi có đăng nhập (đã chạy xong) — bảng conversations giờ cần user_id (xem migrate_auth.py).
+Chỉ dùng được với schema TRƯỚC khi có đăng nhập (đã chạy xong) — bảng conversations giờ cần user_id.
 
 Chạy:  python -m scripts.migrate_sqlite              # đọc ./chat.db
        python -m scripts.migrate_sqlite đường/dẫn.db

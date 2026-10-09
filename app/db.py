@@ -47,8 +47,8 @@ Băm mật khẩu, JWT và đăng nhập nằm ở auth.py; file này chỉ lưu
 Session SQLAlchemy ở đây là đồng bộ; app/routers/chat.py gọi các hàm này qua asyncio.to_thread.
 
 .env cần:  DATABASE_URL=postgresql+psycopg://user:mật_khẩu@localhost:5432/hcm_chat
-Bảng được tạo lúc khởi động API (init_db). Database tạo trước khi có đăng nhập: python -m scripts.migrate_auth
-Database tạo trước Phase 0 (ROADMAP.md): python -m scripts.migrate_phase0
+Bảng được tạo đủ cột lúc khởi động API (init_db → create_all). create_all chỉ tạo bảng còn thiếu, không sửa
+bảng đã có: thêm cột vào model sau này thì phải tạo lại database (DROP rồi khởi động lại API).
 Test chạy trên SQLite tạm (xem conftest.py), không cần Postgres.
 """
 import os
@@ -56,7 +56,7 @@ from datetime import datetime, timezone
 
 from dotenv import load_dotenv
 from sqlalchemy import (JSON, Boolean, CheckConstraint, DateTime, Float, ForeignKey, Index, Integer, String, Text,
-                        UniqueConstraint, create_engine, false, inspect, select, text)
+                        UniqueConstraint, create_engine, false, select, text)
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import DeclarativeBase, Mapped, Session, mapped_column, relationship
 
@@ -294,31 +294,10 @@ class SubmissionAnswer(Base):
     selected_option: Mapped[QuestionOption | None] = relationship()
 
 
-# Cột được thêm vào bảng ĐÃ CÓ trong database → create_all không tự thêm (nó chỉ tạo bảng còn thiếu),
-# phải chạy script migration tương ứng. init_db kiểm tra để báo rõ thay vì lỗi SQL khó hiểu lúc chạy.
-_MIGRATED_COLUMNS = {
-    ("conversations", "user_id"): "scripts.migrate_auth",
-    ("users", "is_admin"): "scripts.migrate_auth",
-    ("conversations", "mode"): "scripts.migrate_phase0",
-    ("exams", "status"): "scripts.migrate_phase0",
-    ("exams", "origin"): "scripts.migrate_phase0",
-    ("exams", "max_attempts"): "scripts.migrate_phase0",
-    ("questions", "explanation"): "scripts.migrate_phase0",
-    ("questions", "source_page"): "scripts.migrate_phase0",
-    ("submission_answers", "graded_by"): "scripts.migrate_phase0",
-}
-
-
 def init_db():
     if engine is None:
         raise RuntimeError("Chưa đặt DATABASE_URL trong .env (vd. postgresql+psycopg://user:pass@localhost:5432/hcm_chat)")
     Base.metadata.create_all(engine)
-    inspector = inspect(engine)
-    columns = {}
-    for (table, column), script in _MIGRATED_COLUMNS.items():
-        columns.setdefault(table, {c["name"] for c in inspector.get_columns(table)})
-        if column not in columns[table]:
-            raise RuntimeError(f"Bảng {table} chưa có cột {column} → chạy: python -m {script}")
 
 
 # ---------- chuyển sang dict để trả về JSON ----------

@@ -4,7 +4,7 @@ Test db.py trên database tạm (SQLite, hoặc Postgres nếu đặt TEST_DATAB
 Chạy:  pytest -q tests/test_db.py
 """
 import pytest
-from sqlalchemy import create_engine, func, select, text
+from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
@@ -300,17 +300,3 @@ def test_phase0_columns_accept_valid_values(temp_db):
 def test_conversation_mode_rejects_unknown_value(temp_db):
     with pytest.raises(IntegrityError), Session(temp_db) as s, s.begin():
         s.add(db.Conversation(user_id=A, title="x", mode="quiz"))
-
-
-def test_init_db_asks_for_migration_on_old_database(tmp_path, monkeypatch):
-    """Database tạo trước Phase 0: bảng conversations chưa có cột mode → API dừng với hướng dẫn rõ ràng."""
-    engine = create_engine(f"sqlite:///{tmp_path / 'old.db'}")
-    with engine.begin() as c:
-        c.execute(text("CREATE TABLE users (id INTEGER PRIMARY KEY, email VARCHAR(255), password_hash VARCHAR(255), "
-                       "display_name VARCHAR(100), is_active BOOLEAN, is_admin BOOLEAN, created_at DATETIME, "
-                       "last_login_at DATETIME)"))
-        c.execute(text("CREATE TABLE conversations (id INTEGER PRIMARY KEY, user_id INTEGER, title VARCHAR(200), "
-                       "created_at DATETIME, updated_at DATETIME)"))
-    monkeypatch.setattr(db, "engine", engine)
-    with pytest.raises(RuntimeError, match="conversations chưa có cột mode.*scripts.migrate_phase0"):
-        db.init_db()
