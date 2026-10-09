@@ -10,10 +10,12 @@ app/                    Backend FastAPI
   deps.py               Pipeline RAG dùng chung giữa các router (get_rag)
   auth.py               Băm mật khẩu Argon2, JWT, refresh token, cookie, chống CSRF, get_current_user
   db.py                 Bảng PostgreSQL (SQLAlchemy): users, conversations, messages, refresh_tokens, đề thi
+  exams.py              Bài kiểm tra: tạo đề, làm bài, chấm trắc nghiệm + mọi luật quyền/thời gian (ROADMAP Phase 1)
   routers/
     qa.py               GET /health, POST /search, POST /ask
     auth.py             /auth/register, /login, /refresh, /logout, /me
     chat.py             /conversations, POST /chat (stream NDJSON, lưu lịch sử)
+    exams.py            /exams, /submissions
 rag/                    Lõi RAG
   reranker.py           Qwen3-Reranker-0.6B: chấm P(yes) cho từng cặp (câu hỏi, chunk)
   search_rerank.py      Qdrant → rerank → retrieval guard (pass / partial / refuse)
