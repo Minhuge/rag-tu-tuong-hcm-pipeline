@@ -4,7 +4,7 @@ Test db.py trên database tạm (SQLite, hoặc Postgres nếu đặt TEST_DATAB
 Chạy:  pytest -q tests/test_db.py
 """
 import pytest
-from sqlalchemy import func, select
+from sqlalchemy import create_engine, func, select, text
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
@@ -226,10 +226,15 @@ def test_deleting_option_keeps_answer(temp_db):
     (db.Question, {"points": -1}),
     (db.QuestionOption, {"label": "A"}),                     # trùng nhãn A trong cùng câu
     (db.QuestionOption, {"label": "E", "is_correct": True}),  # câu đã có đáp án đúng B
+    (db.Exam, {"status": "archived"}),
+    (db.Exam, {"origin": "human"}),
+    (db.Exam, {"max_attempts": 0}),
+    (db.Question, {"source_page": 0}),
     (db.Submission, {"status": "cheating"}),
     (db.SubmissionAnswer, {"question_id": "essay"}),          # câu này bài làm đã trả lời rồi
     (db.SubmissionAnswer, {"selected_option_id": "B", "essay_text": "vừa chọn vừa viết"}),
     (db.SubmissionAnswer, {"score": -1}),
+    (db.SubmissionAnswer, {"graded_by": "teacher"}),
 ])
 def test_constraints_reject_invalid_rows(temp_db, model, kw):
     with Session(temp_db) as s, s.begin():
@@ -264,3 +269,48 @@ def test_share_code_unique(temp_db):
         make_exam(s)
     with pytest.raises(IntegrityError), Session(temp_db) as s, s.begin():
         make_exam(s, visibility="link", share_code="abc123")
+
+
+# ---------- cột Phase 0 ----------
+def test_phase0_column_defaults(temp_db):
+    conv, _ = db.begin_turn(A, None, "Câu 1")
+    with Session(temp_db) as s, s.begin():
+        assert s.get(db.Conversation, conv["id"]).mode == "docs"             # chat hiện tại = hỏi giáo trình
+        exam = make_exam(s)
+        sub = make_submission(s, exam)
+        exam_id, answer_id = exam.id, sub.answers[0].id
+    with Session(temp_db) as s:
+        exam = s.get(db.Exam, exam_id)
+        assert (exam.status, exam.origin, exam.max_attempts) == ("draft", "manual", None)
+        assert all(q.explanation is None and q.source_page is None for q in exam.questions)
+        assert s.get(db.SubmissionAnswer, answer_id).graded_by is None        # chưa chấm
+
+
+def test_phase0_columns_accept_valid_values(temp_db):
+    with Session(temp_db) as s, s.begin():
+        exam = make_exam(s, status="published", origin="ai", max_attempts=3)
+        q = by_type(exam, "mcq")
+        q.explanation, q.source_page = "Vì giáo trình nói vậy", 42
+        sub = make_submission(s, exam)
+        for answer, who in zip(sub.answers, ("auto", "ai")):
+            answer.graded_by = who
+        s.add(db.Conversation(user_id=A, title="Ôn chương 1", mode="exam"))
+
+
+def test_conversation_mode_rejects_unknown_value(temp_db):
+    with pytest.raises(IntegrityError), Session(temp_db) as s, s.begin():
+        s.add(db.Conversation(user_id=A, title="x", mode="quiz"))
+
+
+def test_init_db_asks_for_migration_on_old_database(tmp_path, monkeypatch):
+    """Database tạo trước Phase 0: bảng conversations chưa có cột mode → API dừng với hướng dẫn rõ ràng."""
+    engine = create_engine(f"sqlite:///{tmp_path / 'old.db'}")
+    with engine.begin() as c:
+        c.execute(text("CREATE TABLE users (id INTEGER PRIMARY KEY, email VARCHAR(255), password_hash VARCHAR(255), "
+                       "display_name VARCHAR(100), is_active BOOLEAN, is_admin BOOLEAN, created_at DATETIME, "
+                       "last_login_at DATETIME)"))
+        c.execute(text("CREATE TABLE conversations (id INTEGER PRIMARY KEY, user_id INTEGER, title VARCHAR(200), "
+                       "created_at DATETIME, updated_at DATETIME)"))
+    monkeypatch.setattr(db, "engine", engine)
+    with pytest.raises(RuntimeError, match="conversations chưa có cột mode.*scripts.migrate_phase0"):
+        db.init_db()

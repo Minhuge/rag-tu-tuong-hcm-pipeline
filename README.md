@@ -27,6 +27,7 @@ scripts/                Công cụ dòng lệnh (chạy bằng python -m scripts
   list_models.py        Liệt kê model Gemini mà API key gọi được
   create_user.py        Tạo tài khoản (vd. quản trị viên đầu tiên)
   migrate_auth.py       Nâng database cũ lên có đăng nhập
+  migrate_phase0.py     Thêm cột Phase 0 (conversations.mode, exams.status/origin/...) vào database đã có
   migrate_sqlite.py     Chuyển lịch sử chat cũ từ SQLite sang PostgreSQL (đã chạy xong)
 tests/                  pytest: reranker, guardrail, pipeline, database, API, đăng nhập (không tốn quota Gemini)
 data/                   Giáo trình PDF, bộ câu hỏi đánh giá (eval_testset.json), kết quả đánh giá (eval_runs/)

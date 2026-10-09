@@ -26,14 +26,18 @@ Lưu lịch sử chat vào PostgreSQL bằng SQLAlchemy.
   users (người làm bài, user_id) — exams.created_by cũng trỏ về users
 
   exams              : created_by, title, description, visibility ("private"/"link"/"public"),
+                       status ("draft"/"published"), origin ("manual"/"ai"), max_attempts,
                        share_code (unique), duration_minutes, shuffle_questions, open_at, close_at
-  questions          : exam_id, type ("mcq"/"essay"), order_index, content, rubric (chỉ essay), points
+  questions          : exam_id, type ("mcq"/"essay"), order_index, content, rubric (chỉ essay), points,
+                       explanation, source_page
   question_options   : question_id, label ("A".."D"), content, is_correct, order_index   (chỉ mcq)
   submissions        : exam_id, user_id, status ("in_progress"/"submitted"/"graded"),
                        score, max_score, started_at, submitted_at, graded_at
   submission_answers : submission_id, question_id, selected_option_id (mcq) / essay_text (essay),
-                       score, feedback, graded_at — mỗi bài làm trả lời mỗi câu tối đa 1 lần
+                       score, feedback, graded_by ("auto"/"ai"/"creator"), graded_at
+                       — mỗi bài làm trả lời mỗi câu tối đa 1 lần
 
+conversations.mode: "docs" = hỏi giáo trình (RAG), "exam" = trợ lý bài kiểm tra; giữ hai lịch sử tách nhau.
 Mỗi người chỉ thấy cuộc trò chuyện của chính mình (user_id). Xoá user → xoá dây chuyền
 cuộc trò chuyện, tin nhắn, refresh token, đề thi người đó tạo và bài làm của người đó.
 Xoá đề → xoá dây chuyền câu hỏi, lựa chọn, bài làm và câu trả lời. Xoá một lựa chọn → câu trả lời
@@ -44,6 +48,7 @@ Session SQLAlchemy ở đây là đồng bộ; app/routers/chat.py gọi các h�
 
 .env cần:  DATABASE_URL=postgresql+psycopg://user:mật_khẩu@localhost:5432/hcm_chat
 Bảng được tạo lúc khởi động API (init_db). Database tạo trước khi có đăng nhập: python -m scripts.migrate_auth
+Database tạo trước Phase 0 (ROADMAP.md): python -m scripts.migrate_phase0
 Test chạy trên SQLite tạm (xem conftest.py), không cần Postgres.
 """
 import os
@@ -89,11 +94,24 @@ class Base(DeclarativeBase):
 JSONType = JSON().with_variant(JSONB(), "postgresql")
 
 
+def _one_of(column: str, values: tuple[str, ...]) -> str:
+    """CHECK chỉ nhận các giá trị cho trước. Cột cho phép NULL thì NULL vẫn qua (SQL coi NULL IN (...) là không sai)."""
+    return f"{column} IN ({', '.join(repr(v) for v in values)})"
+
+
+# Hai hệ thống chat chung một cửa sổ: docs = hỏi giáo trình (RAG hiện có), exam = trợ lý bài kiểm tra (Phase 5)
+CONVERSATION_MODES = ("docs", "exam")
+
+
 class Conversation(Base):
     __tablename__ = "conversations"
+    __table_args__ = (
+        CheckConstraint(_one_of("mode", CONVERSATION_MODES), name="ck_conversations_mode"),
+    )
 
     id: Mapped[int] = mapped_column(primary_key=True)
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
+    mode: Mapped[str] = mapped_column(String(16), default="docs", server_default="docs")
     title: Mapped[str] = mapped_column(String(200))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, index=True)
@@ -142,12 +160,11 @@ class RefreshToken(Base):
 
 # ---------- đề thi ----------
 EXAM_VISIBILITY = ("private", "link", "public")   # chỉ người tạo / ai có share_code / mọi người
+EXAM_STATUS = ("draft", "published")              # đề AI phải được xem lại trước khi cho người khác làm
+EXAM_ORIGIN = ("manual", "ai")                    # tự soạn / AI sinh — cũng dùng để đếm lượt sinh đề AI mỗi ngày
 QUESTION_TYPES = ("mcq", "essay")                  # trắc nghiệm / tự luận
 SUBMISSION_STATUS = ("in_progress", "submitted", "graded")
-
-
-def _one_of(column: str, values: tuple[str, ...]) -> str:
-    return f"{column} IN ({', '.join(repr(v) for v in values)})"
+GRADED_BY = ("auto", "ai", "creator")             # máy chấm mcq / AI chấm tự luận / người ra đề chấm lại
 
 
 class Exam(Base):
@@ -156,6 +173,9 @@ class Exam(Base):
         CheckConstraint(_one_of("visibility", EXAM_VISIBILITY), name="ck_exams_visibility"),
         CheckConstraint("duration_minutes IS NULL OR duration_minutes > 0", name="ck_exams_duration"),
         CheckConstraint("open_at IS NULL OR close_at IS NULL OR close_at > open_at", name="ck_exams_window"),
+        CheckConstraint(_one_of("status", EXAM_STATUS), name="ck_exams_status"),
+        CheckConstraint(_one_of("origin", EXAM_ORIGIN), name="ck_exams_origin"),
+        CheckConstraint("max_attempts IS NULL OR max_attempts > 0", name="ck_exams_max_attempts"),
     )
 
     id: Mapped[int] = mapped_column(primary_key=True)
@@ -163,6 +183,9 @@ class Exam(Base):
     title: Mapped[str] = mapped_column(String(200))
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
     visibility: Mapped[str] = mapped_column(String(16), default="private", server_default="private")
+    status: Mapped[str] = mapped_column(String(16), default="draft", server_default="draft")
+    origin: Mapped[str] = mapped_column(String(16), default="manual", server_default="manual")
+    max_attempts: Mapped[int | None] = mapped_column(Integer, nullable=True)         # NULL = làm lại không giới hạn
     # Mã chia sẻ cho visibility="link"; NULL được lặp lại, giá trị thật thì không trùng
     share_code: Mapped[str | None] = mapped_column(String(32), unique=True, nullable=True)
     duration_minutes: Mapped[int | None] = mapped_column(Integer, nullable=True)     # NULL = không giới hạn
@@ -183,6 +206,7 @@ class Question(Base):
     __table_args__ = (
         CheckConstraint(_one_of("type", QUESTION_TYPES), name="ck_questions_type"),
         CheckConstraint("points >= 0", name="ck_questions_points"),
+        CheckConstraint("source_page IS NULL OR source_page > 0", name="ck_questions_source_page"),
         Index("ix_questions_exam_order", "exam_id", "order_index"),
     )
 
@@ -192,6 +216,8 @@ class Question(Base):
     order_index: Mapped[int] = mapped_column(Integer)
     content: Mapped[str] = mapped_column(Text)
     rubric: Mapped[str | None] = mapped_column(Text, nullable=True)                  # chỉ essay: hướng dẫn chấm
+    explanation: Mapped[str | None] = mapped_column(Text, nullable=True)             # vì sao đáp án đúng (trang kết quả)
+    source_page: Mapped[int | None] = mapped_column(Integer, nullable=True)          # trang giáo trình, như trích dẫn chatbot
     points: Mapped[float] = mapped_column(Float, default=1.0, server_default="1")
 
     exam: Mapped[Exam] = relationship(back_populates="questions")
@@ -248,6 +274,7 @@ class SubmissionAnswer(Base):
         UniqueConstraint("submission_id", "question_id", name="uq_submission_answers_question"),
         CheckConstraint("selected_option_id IS NULL OR essay_text IS NULL", name="ck_submission_answers_one_kind"),
         CheckConstraint("score IS NULL OR score >= 0", name="ck_submission_answers_score"),
+        CheckConstraint(_one_of("graded_by", GRADED_BY), name="ck_submission_answers_graded_by"),
     )
 
     id: Mapped[int] = mapped_column(primary_key=True)
@@ -259,6 +286,7 @@ class SubmissionAnswer(Base):
     essay_text: Mapped[str | None] = mapped_column(Text, nullable=True)
     score: Mapped[float | None] = mapped_column(Float, nullable=True)
     feedback: Mapped[str | None] = mapped_column(Text, nullable=True)
+    graded_by: Mapped[str | None] = mapped_column(String(16), nullable=True)         # NULL = chưa chấm
     graded_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
     submission: Mapped[Submission] = relationship(back_populates="answers")
@@ -266,18 +294,31 @@ class SubmissionAnswer(Base):
     selected_option: Mapped[QuestionOption | None] = relationship()
 
 
-# Cột được thêm sau khi bảng đã có dữ liệu → create_all không tự thêm, phải chạy migrate_auth.py.
-_MIGRATED_COLUMNS = {"conversations": "user_id", "users": "is_admin"}
+# Cột được thêm vào bảng ĐÃ CÓ trong database → create_all không tự thêm (nó chỉ tạo bảng còn thiếu),
+# phải chạy script migration tương ứng. init_db kiểm tra để báo rõ thay vì lỗi SQL khó hiểu lúc chạy.
+_MIGRATED_COLUMNS = {
+    ("conversations", "user_id"): "scripts.migrate_auth",
+    ("users", "is_admin"): "scripts.migrate_auth",
+    ("conversations", "mode"): "scripts.migrate_phase0",
+    ("exams", "status"): "scripts.migrate_phase0",
+    ("exams", "origin"): "scripts.migrate_phase0",
+    ("exams", "max_attempts"): "scripts.migrate_phase0",
+    ("questions", "explanation"): "scripts.migrate_phase0",
+    ("questions", "source_page"): "scripts.migrate_phase0",
+    ("submission_answers", "graded_by"): "scripts.migrate_phase0",
+}
 
 
 def init_db():
     if engine is None:
         raise RuntimeError("Chưa đặt DATABASE_URL trong .env (vd. postgresql+psycopg://user:pass@localhost:5432/hcm_chat)")
     Base.metadata.create_all(engine)
-    cols = inspect(engine)
-    for table, column in _MIGRATED_COLUMNS.items():
-        if column not in {c["name"] for c in cols.get_columns(table)}:
-            raise RuntimeError(f"Bảng {table} chưa có cột {column} → chạy: python -m scripts.migrate_auth")
+    inspector = inspect(engine)
+    columns = {}
+    for (table, column), script in _MIGRATED_COLUMNS.items():
+        columns.setdefault(table, {c["name"] for c in inspector.get_columns(table)})
+        if column not in columns[table]:
+            raise RuntimeError(f"Bảng {table} chưa có cột {column} → chạy: python -m {script}")
 
 
 # ---------- chuyển sang dict để trả về JSON ----------
