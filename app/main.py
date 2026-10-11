@@ -4,6 +4,7 @@ REST API cho chatbot giáo trình Tư tưởng Hồ Chí Minh. File này chỉ d
   routers/qa.py    GET /health, POST /search, POST /ask        hỏi–đáp không lưu lịch sử
   routers/auth.py  /auth/register, /login, /refresh, /logout, /me
   routers/chat.py  /conversations, POST /chat (NDJSON stream)   lịch sử chat theo tài khoản
+  routers/exams.py GET /chapters                                danh sách chương để tạo đề
 
 Mọi endpoint trừ /health cần đăng nhập: cookie access_token (web) hoặc header
 Authorization: Bearer <access token> (trong /docs: bấm Authorize, dán access_token lấy từ /auth/login).
@@ -29,7 +30,7 @@ from fastapi.staticfiles import StaticFiles
 
 from app import auth, db, deps
 from app.routers import auth as auth_routes
-from app.routers import chat, qa
+from app.routers import chat, exams, qa
 from rag.pipeline import GEMINI_MODEL, GuardedRAG
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -63,9 +64,10 @@ app.add_middleware(
 app.include_router(qa.router)
 app.include_router(auth_routes.router)
 app.include_router(chat.router)
+app.include_router(exams.router)
 
 # ---------- web chat ----------
-# Mount SAU các router → /auth, /ask, /search, /health, /docs vẫn được khớp trước.
+# Mount SAU các router → /auth, /ask, /search, /chapters, /health, /docs vẫn được khớp trước.
 WEB_DIST = ROOT / "web" / "dist"
 if WEB_DIST.is_dir():
     app.mount("/", StaticFiles(directory=WEB_DIST, html=True), name="web")
