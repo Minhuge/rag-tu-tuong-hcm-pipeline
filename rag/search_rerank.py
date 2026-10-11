@@ -14,7 +14,7 @@ Cấu hình qua .env (đều có giá trị mặc định):
   QDRANT_COLLECTION=tu_tuong_hcm
   QDRANT_API_KEY=...                 # chỉ cần với Qdrant Cloud
 
-Payload mỗi point cần có key "text" (và nên có "chunk_id", "chapter", "page").
+Payload mỗi point cần có key "text" (và nên có "chunk_id", "chapter", "chapter_no", "page").
 
 Chạy:  python -m rag.search_rerank
 """
@@ -61,8 +61,25 @@ def get_qdrant() -> QdrantClient:
                         api_key=os.getenv("QDRANT_API_KEY"))
 
 
-def chapter_filter(chapter: str) -> models.Filter:
-    return models.Filter(must=[models.FieldCondition(key="chapter", match=models.MatchValue(value=chapter))])
+def chapter_filter(chapter: str | int) -> models.Filter:
+    """Lọc theo chương: số (3, 0 = Mở đầu) → chapter_no; chữ ("Chương III") → chapter."""
+    key = "chapter_no" if isinstance(chapter, int) else "chapter"
+    return models.Filter(must=[models.FieldCondition(key=key, match=models.MatchValue(value=chapter))])
+
+
+def load_chapter(client: QdrantClient, chapter_no: int) -> list[dict]:
+    """
+    Toàn bộ đoạn của một chương, theo thứ tự trong giáo trình (để sinh đề — không phải tìm kiếm ngữ nghĩa).
+    Chỉ đọc payload qua scroll: không embedding, không cần Ollama/GPU.
+    """
+    chunks, offset = [], None
+    while True:
+        points, offset = client.scroll(COLLECTION, scroll_filter=chapter_filter(chapter_no), limit=256,
+                                       offset=offset, with_payload=True, with_vectors=False)
+        chunks += [p.payload for p in points]
+        if offset is None:
+            break
+    return sorted(chunks, key=lambda c: (c.get("page") or 0, c.get("chunk_id", "")))
 
 
 def qdrant_search(client: QdrantClient, embedder, question: str,

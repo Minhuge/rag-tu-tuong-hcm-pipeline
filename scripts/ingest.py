@@ -55,28 +55,44 @@ def chunk_documents(docs, chunk_size=800, chunk_overlap=100):
     return splitter.split_documents(docs)
 
 
-def extract_chapter(text: str):
-    if re.search(r"CH[UƯ]ƠNG\s+MỞ\s*ĐẦU", text, re.IGNORECASE):
-        return "Chương Mở đầu"
-    match = re.search(r"CH[UƯ]ƠNG\s+([IVXLCDM]+)\b", text, re.IGNORECASE)
-    if match:
-        return "Chương " + match.group(1).upper()
+# Tiêu đề chương trong giáo trình luôn VIẾT HOA ("CHƯƠNG III TƯ TƯỞNG…") → so khớp phân biệt hoa/thường,
+# để câu nhắc lại trong bài ("như chương II đã trình bày") không bị nhận nhầm là bắt đầu chương mới.
+CHAPTER_HEADING_RE = re.compile(r"CH[UƯ]ƠNG\s+(MỞ\s*ĐẦU|[IVX]+)\b")
+ROMAN = {"I": 1, "V": 5, "X": 10}
 
-    return None
+
+def roman_to_int(roman: str) -> int:
+    total = 0
+    for ch, nxt in zip(roman, roman[1:] + " "):
+        value = ROMAN[ch]
+        total += -value if nxt in ROMAN and ROMAN[nxt] > value else value
+    return total
+
+
+def extract_chapter(text: str) -> tuple[str, int] | None:
+    """Đoạn có tiêu đề chương → ("Chương III", 3); Chương Mở đầu → ("Chương Mở đầu", 0); không có → None."""
+    match = CHAPTER_HEADING_RE.search(text)
+    if match is None:
+        return None
+    token = match.group(1)
+    if token.startswith("MỞ"):
+        return "Chương Mở đầu", 0
+    return "Chương " + token, roman_to_int(token)
 
 
 def build_chunks_with_metadata(chunks, source_name="Giao_trinh_Tu_tuong_HCM.pdf"):
     result = []
-    current_chapter = "Chưa xác định"
+    current_chapter, current_no = "Chưa xác định", None
     for i, chunk in enumerate(chunks, start=1):
-        detected_chapter = extract_chapter(chunk.page_content)
-        if detected_chapter is not None:
-            current_chapter = detected_chapter
+        detected = extract_chapter(chunk.page_content)
+        if detected is not None:
+            current_chapter, current_no = detected
         page = chunk.metadata.get("page")   # PyPDFLoader đánh số từ 0
         result.append({
             "chunk_id": f"chunk_{i:03d}",
             "source": source_name,
             "chapter": current_chapter,
+            "chapter_no": current_no,    # số để lọc: 0 = Mở đầu, 1..7 = Chương I..VII
             "page": page + 1 if page is not None else None,   # trang 1-based để trích dẫn
             "text": chunk.page_content,
         })
@@ -147,13 +163,15 @@ def create_or_recreate_collection(client: QdrantClient, dim: int, collection: st
     # Index payload để lọc theo chương nhanh (tương đương metadata filter của Pinecone).
     client.create_payload_index(collection, field_name="chapter",
                                 field_schema=models.PayloadSchemaType.KEYWORD)
+    client.create_payload_index(collection, field_name="chapter_no",
+                                field_schema=models.PayloadSchemaType.INTEGER)
     print(f"Đã tạo collection: {collection} (dim={dim}, distance={DISTANCE.value})")
 
 
 def upsert_chunks(client: QdrantClient, chunks_data: list, batch_size: int = 100,
                   collection: str = COLLECTION):
     """
-    chunks_data: list dict có 'chunk_id', 'embedding', 'text', 'source', 'chapter', 'page'
+    chunks_data: list dict có 'chunk_id', 'embedding', 'text', 'source', 'chapter', 'chapter_no', 'page'
     (kết quả từ embed_chunks ở Bước 2).
     Qdrant chỉ nhận ID dạng số nguyên hoặc UUID → dùng số thứ tự, chunk_id để trong payload.
     """
@@ -161,7 +179,7 @@ def upsert_chunks(client: QdrantClient, chunks_data: list, batch_size: int = 100
         models.PointStruct(
             id=i,
             vector=c["embedding"],
-            payload={k: c[k] for k in ("chunk_id", "source", "chapter", "page", "text")},
+            payload={k: c[k] for k in ("chunk_id", "source", "chapter", "chapter_no", "page", "text")},
         )
         for i, c in enumerate(chunks_data, start=1)
     ]
