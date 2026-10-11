@@ -4,7 +4,7 @@ REST API cho chatbot giáo trình Tư tưởng Hồ Chí Minh. File này chỉ d
   routers/qa.py    GET /health, POST /search, POST /ask        hỏi–đáp không lưu lịch sử
   routers/auth.py  /auth/register, /login, /refresh, /logout, /me
   routers/chat.py  /conversations, POST /chat (NDJSON stream)   lịch sử chat theo tài khoản
-  routers/exams.py /exams, /submissions                        bài kiểm tra: tạo đề, làm bài, chấm trắc nghiệm
+  routers/exams.py /exams, /submissions, GET /chapters          bài kiểm tra: tạo đề, làm bài, chấm trắc nghiệm
 
 Mọi endpoint trừ /health cần đăng nhập: cookie access_token (web) hoặc header
 Authorization: Bearer <access token> (trong /docs: bấm Authorize, dán access_token lấy từ /auth/login).
@@ -67,7 +67,7 @@ app.include_router(chat.router)
 app.include_router(exams.router)
 
 # ---------- web chat ----------
-# Mount SAU các router → /auth, /exams, /ask, /search, /health, /docs vẫn được khớp trước.
+# Mount SAU các router → /auth, /exams, /chapters, /ask, /search, /health, /docs vẫn được khớp trước.
 WEB_DIST = ROOT / "web" / "dist"
 if WEB_DIST.is_dir():
     app.mount("/", StaticFiles(directory=WEB_DIST, html=True), name="web")

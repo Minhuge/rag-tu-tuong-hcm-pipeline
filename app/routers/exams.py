@@ -17,6 +17,8 @@ Người làm bài:
   POST   /submissions/{sid}/submit           nộp bài + chấm trắc nghiệm
   GET    /submissions/{sid}                  kết quả bài của tôi
   GET    /submissions/mine                   các bài tôi đã làm
+Tạo đề bằng AI (Phase 2):
+  GET    /chapters                           danh sách chương (số + tên) cho dropdown
 
 Thời gian (open_at, close_at) gửi theo ISO 8601, nên kèm múi giờ: "2026-10-10T08:00:00+07:00"
 (không kèm thì hiểu là UTC). Thời gian trả về là mili giây (epoch), giống các API khác.
@@ -30,6 +32,7 @@ from pydantic import BaseModel, Field
 
 from app import auth, exams
 from app.db import EXAM_VISIBILITY
+from rag.exam_generation import CHAPTERS
 
 router = APIRouter(tags=["bài kiểm tra"])
 Visibility = Literal[EXAM_VISIBILITY]
@@ -233,3 +236,10 @@ def submit(submission_id: int, user: dict = Depends(auth.get_current_user)):
 def get_result(submission_id: int, user: dict = Depends(auth.get_current_user)):
     with _http_errors():
         return exams.get_my_result(user["id"], submission_id)
+
+
+# ---------- tạo đề bằng AI (Phase 2) ----------
+@router.get("/chapters")
+def list_chapters(user: dict = Depends(auth.get_current_user)):
+    """`chapter` là giá trị truyền lại khi tạo đề (khớp payload "chapter" trong Qdrant)."""
+    return [{"number": c.number, "chapter": c.key, "title": c.title} for c in CHAPTERS]

@@ -92,6 +92,60 @@ class ChatResult:
     timings: dict = field(default_factory=dict)
 
 
+def gemini_config(system: str, schema=None) -> types.GenerateContentConfig:
+    """Cấu hình chung cho mọi lần gọi Gemini; có schema → Gemini bắt buộc trả JSON đúng schema đó."""
+    extra = {"response_mime_type": "application/json", "response_schema": schema} if schema else {}
+    # Model không hỗ trợ thinking_level (vd. một số bản Flash-Lite) → đặt GEMINI_THINKING=none trong .env
+    if GEMINI_THINKING.lower() not in ("", "none", "off"):
+        extra["thinking_config"] = types.ThinkingConfig(thinking_level=GEMINI_THINKING)
+    # Không dùng tool → tắt automatic function calling (bỏ luôn cảnh báo AFC của SDK).
+    return types.GenerateContentConfig(
+        system_instruction=system,
+        automatic_function_calling=types.AutomaticFunctionCallingConfig(disable=True), **extra)
+
+
+async def call_gemini(llm: genai.Client, contents: str, config: types.GenerateContentConfig,
+                      retries: int = 3):
+    """
+    Gọi Gemini với model chính, lỗi tạm thời thì xử lý theo loại:
+      429 / phút  → chờ rồi thử lại cùng model (bậc miễn phí chỉ ~5 lần/phút)
+      429 / ngày, 500 / 503 / 504 (quá tải) → chuyển sang model dự phòng tiếp theo
+      402 (hết credit) → mọi model đều bị chặn, báo lỗi rõ ràng
+    """
+    models = [GEMINI_MODEL, *GEMINI_FALLBACKS]
+    for i, model in enumerate(models):
+        has_next = i < len(models) - 1
+        for attempt in range(retries + 1):
+            try:
+                resp = await llm.aio.models.generate_content(
+                    model=model, contents=contents, config=config)
+                if i:
+                    print(f"  [Gemini] đã trả lời bằng model dự phòng {model}")
+                return resp
+            except genai_errors.ServerError as e:      # 500 / 503 / 504: model quá tải
+                if not has_next:
+                    raise
+                print(f"  [Gemini {e.code}] {model} quá tải → thử {models[i + 1]}")
+                break
+            except genai_errors.ClientError as e:
+                if e.code == 402:   # project trả trước đã hết credit: mọi model đều bị chặn
+                    raise RuntimeError("Gemini báo hết prepayment credits (402). "
+                                       "Nạp thêm credit tại https://ai.studio/projects.") from e
+                if e.code != 429:
+                    raise
+                if "PerDay" in str(e):   # mỗi model có hạn mức ngày riêng
+                    if not has_next:
+                        raise RuntimeError("Đã hết lượt gọi Gemini trong ngày (RPD) ở mọi model. "
+                                           "Đổi GEMINI_MODEL hoặc bật billing.") from e
+                    print(f"  [Gemini 429] {model} hết lượt ngày → thử {models[i + 1]}")
+                    break
+                if attempt == retries:
+                    raise
+                wait = 15 * (attempt + 1)
+                print(f"  [Gemini 429] chờ {wait}s rồi thử lại ({attempt + 1}/{retries})...")
+                await asyncio.sleep(wait)
+
+
 class GuardedRAG:
     def __init__(self):
         self.retriever = Retriever()            # Qdrant + Ollama embedding + Qwen3-Reranker
@@ -142,54 +196,10 @@ class GuardedRAG:
 
     # ---------- Gemini ----------
     def _cfg(self, system: str, schema=None) -> types.GenerateContentConfig:
-        extra = {"response_mime_type": "application/json", "response_schema": schema} if schema else {}
-        # Model không hỗ trợ thinking_level (vd. một số bản Flash-Lite) → đặt GEMINI_THINKING=none trong .env
-        if GEMINI_THINKING.lower() not in ("", "none", "off"):
-            extra["thinking_config"] = types.ThinkingConfig(thinking_level=GEMINI_THINKING)
-        # Không dùng tool → tắt automatic function calling (bỏ luôn cảnh báo AFC của SDK).
-        return types.GenerateContentConfig(
-            system_instruction=system,
-            automatic_function_calling=types.AutomaticFunctionCallingConfig(disable=True), **extra)
+        return gemini_config(system, schema)
 
     async def _call(self, contents: str, config: types.GenerateContentConfig, retries: int = 3):
-        """
-        Gọi Gemini với model chính, lỗi tạm thời thì xử lý theo loại:
-          429 / phút  → chờ rồi thử lại cùng model (bậc miễn phí chỉ ~5 lần/phút)
-          429 / ngày, 500 / 503 / 504 (quá tải) → chuyển sang model dự phòng tiếp theo
-          402 (hết credit) → mọi model đều bị chặn, báo lỗi rõ ràng
-        """
-        models = [GEMINI_MODEL, *GEMINI_FALLBACKS]
-        for i, model in enumerate(models):
-            has_next = i < len(models) - 1
-            for attempt in range(retries + 1):
-                try:
-                    resp = await self.llm.aio.models.generate_content(
-                        model=model, contents=contents, config=config)
-                    if i:
-                        print(f"  [Gemini] đã trả lời bằng model dự phòng {model}")
-                    return resp
-                except genai_errors.ServerError as e:      # 500 / 503 / 504: model quá tải
-                    if not has_next:
-                        raise
-                    print(f"  [Gemini {e.code}] {model} quá tải → thử {models[i + 1]}")
-                    break
-                except genai_errors.ClientError as e:
-                    if e.code == 402:   # project trả trước đã hết credit: mọi model đều bị chặn
-                        raise RuntimeError("Gemini báo hết prepayment credits (402). "
-                                           "Nạp thêm credit tại https://ai.studio/projects.") from e
-                    if e.code != 429:
-                        raise
-                    if "PerDay" in str(e):   # mỗi model có hạn mức ngày riêng
-                        if not has_next:
-                            raise RuntimeError("Đã hết lượt gọi Gemini trong ngày (RPD) ở mọi model. "
-                                               "Đổi GEMINI_MODEL hoặc bật billing.") from e
-                        print(f"  [Gemini 429] {model} hết lượt ngày → thử {models[i + 1]}")
-                        break
-                    if attempt == retries:
-                        raise
-                    wait = 15 * (attempt + 1)
-                    print(f"  [Gemini 429] chờ {wait}s rồi thử lại ({attempt + 1}/{retries})...")
-                    await asyncio.sleep(wait)
+        return await call_gemini(self.llm, contents, config, retries)
 
     async def _stream(self, contents: str, config: types.GenerateContentConfig):
         """
