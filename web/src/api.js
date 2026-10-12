@@ -1,10 +1,21 @@
 // Gọi FastAPI (api.py). Dev đi qua Vite proxy, bản build được FastAPI phục vụ cùng origin.
 const BASE = import.meta.env.VITE_API_URL || ''
 
+/**
+ * Lỗi gọi API. Ngoài message (tiếng Việt, đưa thẳng lên giao diện) còn có:
+ *   status      mã HTTP; 0 = không tới được máy chủ
+ *   fields      lỗi từng trường từ 422, vd. { title: 'Không được để trống', 'options.1.content': '…' }
+ *               → giao diện hiện lỗi ngay cạnh ô nhập tương ứng
+ *   question    số thứ tự câu bị lỗi (1, 2, …) khi máy chủ báo "Câu 3: …" (publish) → cuộn tới câu đó
+ *   retryable   lỗi tạm thời (mất mạng, máy chủ đang khởi động, Gemini lỗi) → hiện nút "Thử lại"
+ */
 export class ApiError extends Error {
-  constructor(message, status) {
+  constructor(message, status, { fields = {}, question = null } = {}) {
     super(message)
     this.status = status
+    this.fields = fields
+    this.question = question
+    this.retryable = status === 0 || status >= 500
   }
 }
 
@@ -27,8 +38,9 @@ async function rawFetch(path, options = {}) {
     // include: gửi kèm cookie đăng nhập kể cả khi web và API khác origin (VITE_API_URL)
     return await fetch(BASE + path, { ...options, headers, credentials: 'include' })
   } catch (e) {
-    if (e.name === 'AbortError') throw e
-    throw new ApiError('Không kết nối được máy chủ. Kiểm tra uvicorn api:app đã chạy chưa.', 0)
+    if (e.name === 'AbortError') throw e // người dùng huỷ (rời trang, bấm dừng): không phải lỗi
+    if (e.name === 'TimeoutError') throw new ApiError('Máy chủ phản hồi quá lâu. Thử lại sau ít giây.', 0)
+    throw new ApiError('Không kết nối được máy chủ. Kiểm tra mạng, hoặc uvicorn app.main:app đã chạy chưa.', 0)
   }
 }
 
@@ -80,6 +92,57 @@ export async function restoreSession() {
 
 export const logout = () => rawFetch('/auth/logout', { method: 'POST' }) // máy chủ xoá cả hai cookie
 
+// Tên trường (theo schema API) → nhãn hiện cho người dùng, dùng trong thông báo lỗi 422
+const FIELD_LABELS = {
+  email: 'Email', password: 'Mật khẩu', display_name: 'Tên hiển thị', title: 'Tiêu đề', description: 'Mô tả',
+  duration_minutes: 'Thời gian làm bài', open_at: 'Giờ mở đề', close_at: 'Giờ đóng đề', content: 'Nội dung',
+  points: 'Điểm', rubric: 'Barem', explanation: 'Giải thích', source_page: 'Trang nguồn', options: 'Lựa chọn',
+  label: 'Nhãn lựa chọn', score: 'Điểm', feedback: 'Nhận xét', n_mcq: 'Số câu trắc nghiệm', n_essay: 'Số câu tự luận',
+  chapter: 'Chương', essay_text: 'Bài làm', message: 'Câu hỏi',
+}
+
+// Lỗi kiểm tra dữ liệu của FastAPI / Pydantic (tiếng Anh) → tiếng Việt
+function fieldMessage({ type, ctx = {}, msg }) {
+  switch (type) {
+    case 'missing': return 'Không được để trống'
+    case 'string_too_short': return ctx.min_length > 1 ? `Cần ít nhất ${ctx.min_length} ký tự` : 'Không được để trống'
+    case 'string_too_long': return `Tối đa ${ctx.max_length} ký tự`
+    case 'too_long': return `Tối đa ${ctx.max_length} mục`
+    case 'greater_than_equal': return `Phải từ ${ctx.ge} trở lên`
+    case 'greater_than': return `Phải lớn hơn ${ctx.gt}`
+    case 'less_than_equal': return `Tối đa ${ctx.le}`
+    case 'int_parsing': case 'int_type': case 'int_from_float': return 'Phải là số nguyên'
+    case 'float_parsing': case 'float_type': return 'Phải là số'
+    case 'literal_error': return `Chỉ nhận: ${ctx.expected}`
+    case 'value_error': return msg.replace(/^Value error, /, '')
+    default: return msg
+  }
+}
+
+/** detail của 422: [{loc: ['body', 'options', 1, 'content'], type, msg, ctx}] → { 'options.1.content': '…' } */
+function fieldErrors(detail) {
+  const fields = {}
+  for (const err of Array.isArray(detail) ? detail : []) {
+    const path = (err.loc ?? []).filter((p, i) => !(i === 0 && ['body', 'query', 'path'].includes(p))).join('.')
+    fields[path] ??= fieldMessage(err)
+  }
+  return fields
+}
+
+const FALLBACK = {
+  400: 'Dữ liệu chưa hợp lệ.',
+  401: 'Phiên đăng nhập đã hết, hãy đăng nhập lại.',
+  403: 'Bạn không có quyền làm việc này.',
+  404: 'Không tìm thấy (có thể đã bị xoá hoặc bạn không có quyền xem).',
+  409: 'Không làm được ở trạng thái hiện tại — tải lại trang để xem dữ liệu mới nhất.',
+  422: 'Dữ liệu gửi lên không hợp lệ.',
+  429: 'Bạn thao tác quá nhiều — đợi một lát rồi thử lại.',
+  500: 'Máy chủ gặp lỗi hoặc chưa khởi động xong. Thử lại sau ít giây.',
+  502: 'Máy chủ chưa sẵn sàng hoặc lỗi khi gọi Gemini. Thử lại sau ít giây.',
+  503: 'Máy chủ đang bận hoặc đang khởi động. Thử lại sau ít giây.',
+  504: 'Máy chủ phản hồi quá lâu. Thử lại sau ít giây.',
+}
+
 async function errorFrom(res) {
   let body = null
   try {
@@ -87,19 +150,20 @@ async function errorFrom(res) {
   } catch {
     // Vite proxy trả HTML/rỗng khi backend chưa bật xong
   }
-  const detail = typeof body?.detail === 'string' ? body.detail : null
-  const fallback = {
-    401: 'Phiên đăng nhập đã hết, hãy đăng nhập lại.',
-    404: 'Không tìm thấy cuộc trò chuyện (có thể đã bị xoá).',
-    422: 'Dữ liệu gửi lên không hợp lệ.',
-    502: 'Máy chủ chưa sẵn sàng hoặc lỗi khi gọi Gemini.',
-    503: 'Model đang khởi động, thử lại sau ít giây.',
-    500: 'Máy chủ gặp lỗi hoặc chưa khởi động xong.',
-  }[res.status]
-  return new ApiError(detail || fallback || `Lỗi HTTP ${res.status}`, res.status)
+  const detail = body?.detail
+  if (Array.isArray(detail)) {
+    const fields = fieldErrors(detail)
+    const [path, text] = Object.entries(fields)[0] ?? []
+    const label = FIELD_LABELS[path?.split('.').filter((p) => Number.isNaN(Number(p))).at(-1)]
+    return new ApiError(text ? `${label ?? 'Dữ liệu'}: ${text}` : FALLBACK[422], res.status, { fields })
+  }
+  const message = typeof detail === 'string' ? detail : null
+  const question = Number(message?.match(/^Câu (\d+):/)?.[1]) || null // lỗi publish: "Câu 3: cần đúng một đáp án đúng"
+  return new ApiError(message || FALLBACK[res.status] || `Lỗi HTTP ${res.status}`, res.status, { question })
 }
 
-async function request(path, options = {}) {
+/** Gọi API (tự làm mới phiên khi gặp 401), trả JSON; lỗi → ApiError. 204 → null. */
+export async function request(path, options = {}) {
   const res = await send(path, options)
   if (!res.ok) throw await errorFrom(res)
   if (res.status === 204) return null

@@ -1,0 +1,18 @@
+{
+  // VS Code + `npm run typecheck`: chỉ kiểm tra kiểu ở file có // @ts-check (vd. src/examsApi.js),
+  // dùng type sinh từ API (src/api-schema.d.ts). Không ảnh hưởng build (Vite không đọc file này).
+  "compilerOptions": {
+    "target": "ES2022",
+    "lib": ["ES2024", "DOM", "DOM.Iterable"],
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "jsx": "react-jsx",
+    "allowJs": true,
+    "checkJs": false,
+    "strict": true,
+    "noEmit": true,
+    "skipLibCheck": true,
+    "types": ["vite/client"]
+  },
+  "include": ["src"]
+}

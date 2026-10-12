@@ -12,9 +12,11 @@ Authorization: Bearer <access token> (trong /docs: bấm Authorize, dán access_
 Model được nạp + warmup MỘT lần lúc khởi động (gán vào app.deps.rag); mọi request dùng chung.
 Sau đó quét bù chạy nền: chấm các câu tự luận còn dở từ lần chạy trước (app/essay_ai.py: start_sweep).
 
-Web chat (React, thư mục web/):
+Web (React, thư mục web/):
   dev   : cd web && npm run dev       → http://localhost:5173 (Vite proxy các endpoint sang :8000)
   build : cd web && npm run build     → FastAPI tự phục vụ web/dist tại http://localhost:8000
+  Trang web và API dùng chung đường dẫn (/chat, /exams/5/take, /submissions/3…): trình duyệt mở trang
+  (Accept: text/html) → index.html, React Router hiện đúng trang; fetch / Swagger → API (spa_fallback).
 
 Chạy (ở thư mục gốc dự án):  uvicorn app.main:app --port 8000
 Docs:  http://localhost:8000/docs
@@ -25,8 +27,9 @@ import time
 from contextlib import asynccontextmanager
 from pathlib import Path
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
 from app import auth, db, deps, essay_ai
@@ -69,8 +72,28 @@ app.include_router(auth_routes.router)
 app.include_router(chat.router)
 app.include_router(exams.router)
 
-# ---------- web chat ----------
+# ---------- web ----------
 # Mount SAU các router → /auth, /exams, /chapters, /ask, /search, /health, /docs vẫn được khớp trước.
 WEB_DIST = ROOT / "web" / "dist"
+API_PAGES = ("/docs", "/redoc", "/openapi.json")   # trang HTML của chính FastAPI, không thay bằng web
+
+
+def wants_web_page(request: Request) -> bool:
+    """Trình duyệt mở một trang của web (gõ URL, F5, link chia sẻ đề) chứ không phải fetch API / tải file tĩnh."""
+    path = request.url.path
+    return (request.method == "GET" and "text/html" in request.headers.get("accept", "")
+            and not path.startswith(API_PAGES) and "." not in path.rsplit("/", 1)[-1])
+
+
+@app.middleware("http")
+async def spa_fallback(request: Request, call_next):
+    """/chat, /exams/5/take, /submissions/3… vừa là trang web vừa là API: trang → index.html (React Router lo phần
+    còn lại). Thiếu cái này, F5 ở /submissions/3 trả JSON của API, ở /chat trả 405 (chỉ có POST /chat)."""
+    index = WEB_DIST / "index.html"
+    if wants_web_page(request) and index.is_file():
+        return FileResponse(index)
+    return await call_next(request)
+
+
 if WEB_DIST.is_dir():
     app.mount("/", StaticFiles(directory=WEB_DIST, html=True), name="web")
