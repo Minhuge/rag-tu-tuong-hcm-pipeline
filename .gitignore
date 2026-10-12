@@ -34,3 +34,6 @@ chat.db-*
 
 # Cache giám khảo RAGAS (eval_ragas.py)
 .ragas_cache/
+
+# Kết quả chạy thử script prototype (gen_exam_proto, grade_essay_proto)
+outputs/

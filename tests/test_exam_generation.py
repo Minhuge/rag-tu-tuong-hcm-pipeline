@@ -1,6 +1,6 @@
 """
 Test rag/exam_generation.py (lấy đoạn văn theo chương, schema output) và GET /chapters.
-Qdrant chạy trong bộ nhớ (QdrantClient(":memory:")) → không cần Docker, không cần Ollama.
+Qdrant chạy trong bộ nhớ (fixture qdrant trong conftest.py) → không cần Docker, không cần Ollama.
 Response Gemini là object giả → không gọi Gemini thật, không tốn quota.
 
 Chạy:  pytest -q tests/test_exam_generation.py
@@ -11,34 +11,10 @@ from types import SimpleNamespace
 
 import pytest
 from fastapi.testclient import TestClient
-from qdrant_client import QdrantClient, models
 
 from app import auth
 from app import main as api
 from rag import exam_generation as eg
-from rag.search_rerank import COLLECTION
-
-
-def body(i: int, n: int = 300) -> str:
-    return f"Nội dung đoạn {i:02d} " + "x" * n
-
-
-@pytest.fixture
-def qdrant():
-    """Chương III: 20 đoạn trang 38–47 (point chèn lộn xộn); Chương IV: 1 đoạn; Chương V: chỉ dòng tiêu đề."""
-    client = QdrantClient(":memory:")
-    client.create_collection(COLLECTION, vectors_config=models.VectorParams(size=2, distance=models.Distance.COSINE))
-    rows = [{"chunk_id": f"chunk_{100 + i:03d}", "chapter": "Chương III", "page": 38 + i // 2, "text": body(i)}
-            for i in range(20)]
-    rows[0]["text"] = "phần cuối chương trước. CHƯƠNG III TƯ TƯỞNG HỒ CHÍ MINH VỀ CHỦ NGHĨA XÃ HỘI " + "y" * 200
-    rows[1]["text"] = ". " + body(1)
-    rows += [{"chunk_id": "chunk_200", "chapter": "Chương IV", "page": 52, "text": body(0)},
-             {"chunk_id": "chunk_300", "chapter": "Chương V", "page": 67,
-              "text": "hết chương IV. CHƯƠNG V TƯ TƯỞNG HỒ CHÍ MINH VỀ ĐẠI ĐOÀN KẾT"}]
-    order = list(range(len(rows)))[::-1]   # chèn ngược → kết quả phải tự sắp lại theo trang
-    client.upsert(COLLECTION, [models.PointStruct(id=j, vector=[1.0, 0.0], payload=rows[i])
-                               for j, i in enumerate(order)])
-    return client
 
 
 def test_whole_chapter_when_it_fits(qdrant):
@@ -221,7 +197,7 @@ def test_proto_generate_save_and_show(qdrant, tmp_path, fake_gemini):
 
 def test_proto_shows_rejected_and_notice(qdrant, fake_gemini):
     # trang 99 không được gửi → loại ở tầng cấu trúc; tạo bù cũng hỏng trang → thiếu câu, có thông báo
-    llm = fake_gemini([proto_exam_json(mcq_page=99), proto_exam_json(mcq_page=99)])
+    llm = fake_gemini([proto_exam_json(mcq_page=99), exam_json(mcq=[mcq(source_page=99)], essay=[])])
     record = asyncio.run(proto.generate(3, 1, 1, 100_000, llm, qdrant=qdrant))
     assert record["exam"]["mcq"] == [] and len(record["rejected"]) == 2
     text = proto.format_exam(record)

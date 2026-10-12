@@ -133,8 +133,24 @@ Hai tầng kiểm tra:
 
 ### 3.1 Chốt quyết định trước khi code (S)
 
-- [ ] **Quota chấm tính cho ai?** Đề nghị: tính cho **người làm bài**. Nếu tính cho người tạo đề, một đề public có nhiều người làm sẽ dùng hết quota của người tạo. Hết quota thì câu tự luận để chờ người tạo đề chấm tay.
-- [ ] **AI chấm lỗi thì sao?** Để `score = null`, bài vẫn ở `submitted`, job thử lại sau. Người tạo đề luôn chấm tay được.
+- [x] **Quota chấm tính cho ai?** Tính cho **người làm bài**. Nếu tính cho người tạo đề, một đề public có nhiều người làm sẽ dùng hết quota của người tạo. Hết quota thì câu tự luận để chờ người tạo đề chấm tay.
+- [x] **AI chấm lỗi thì sao?** Để `score = null`, bài vẫn ở `submitted`, job thử lại sau. Người tạo đề luôn chấm tay được.
+
+**Đã chốt (kiểm tra với code Phase 1):**
+
+1. **Không thêm cột mới.** `submission_answers` đã có `score`, `feedback`, `graded_by` (`auto` / `ai` / `creator`), `graded_at`; `submissions` đã có `status`, `score`, `graded_at`. Không còn migration (`init_db` chỉ `create_all`) → Phase 3 chỉ dùng các cột này, không phải tạo lại database. Trạng thái một câu tự luận suy ra từ dữ liệu:
+   - `score = null` → chưa chấm (đang chờ AI, AI lỗi, hoặc hết quota — cả ba đều chờ, người tạo đề chấm tay được);
+   - `graded_by = ai` → AI đã chấm; `graded_by = creator` → người tạo đề đã chấm (AI **không bao giờ** ghi đè).
+2. **Quota tính cho người làm bài, đếm theo câu**: số câu có `graded_by = ai` trong các bài của người đó, chấm từ 0 giờ hôm nay theo giờ Việt Nam (cùng cách đếm với 2.9). `AI_GRADE_PER_USER_PER_DAY`, mặc định **20** (5 đề AI × tối đa 3 câu tự luận vẫn còn dư). Hết quota → không gọi Gemini, câu để `score = null`; lần quét bù sau (3.5) sẽ chấm khi có lượt lại.
+3. **Mỗi câu một lần gọi Gemini**, không gộp cả bài: câu này lỗi không kéo câu khác, quota đếm đúng theo câu, prompt ngắn hơn và dễ chống chèn lệnh hơn.
+4. **Câu bỏ trống hoặc quá ngắn → 0 điểm ngay, không gọi Gemini, không tính quota.** Hiện `submit` chỉ tạo dòng `submission_answers` cho câu trắc nghiệm bỏ trống; câu tự luận bỏ trống chưa có dòng nào → job chấm tạo dòng với `score = 0`, `graded_by = auto`, `feedback = "Không có bài làm."`. Ngưỡng "quá ngắn": dưới **20 ký tự** sau khi bỏ khoảng trắng.
+5. **Câu tự luận không có `rubric` → AI không chấm**, để người tạo đề chấm tay. Đề tay cho phép bỏ trống rubric; không có barem thì điểm AI không đáng tin và không biết chia điểm theo ý. Đề AI (Phase 2) luôn có rubric.
+6. **Đoạn giáo trình để đối chiếu:** câu hỏi không lưu chương, chỉ có `source_page`.
+   - Có `source_page` → lấy các đoạn của trang đó ±1 (lọc payload `page` trong Qdrant, không cần vector search) — chính là đoạn đã dùng để ra câu hỏi.
+   - Không có → tìm theo nội dung câu hỏi trên cả giáo trình (retriever của chatbot).
+7. **AI lỗi** (JSON hỏng, 429 / 5xx sau khi đã thử lại trong `call_gemini`, bị chặn bởi safety filter): không ghi gì vào câu đó, ghi log. Không có cột đếm số lần thử → chỉ thử lại khi **quét bù lúc khởi động** (3.5); không có vòng lặp thử lại vô hạn khi đang chạy.
+8. **Điểm do code quyết định cuối cùng:** kẹp về `0..points`, làm tròn 0.25. Bài làm chỉ là dữ liệu trong thẻ `<bai_lam>`; lời gọi chấm không có tool, không có quyền ghi (chi tiết ở 3.2).
+9. **Bài chuyển `graded` khi mọi câu đã có `score`**, tổng luôn tính lại từ database trong một transaction (3.6). Hết quota hoặc AI lỗi → bài nằm ở `submitted` cho tới khi người tạo đề chấm tay hoặc lần quét bù chấm được.
 
 ### 3.2 Schema output và prompt (S)
 

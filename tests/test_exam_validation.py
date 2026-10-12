@@ -214,3 +214,59 @@ def test_generate_options_are_shuffled(fake_gemini):
     assert len({q.correct_label for q in res.exam.mcq}) > 1        # không còn dồn vào B như Gemini trả về
     for q in res.exam.mcq:
         assert next(o.content for o in q.options if o.label == q.correct_label) == "lựa chọn B"
+
+
+# ---------- loại câu trùng (2.7) ----------
+Q_MAU_THUAN = "Theo Hồ Chí Minh, mâu thuẫn cơ bản của thời kỳ quá độ lên chủ nghĩa xã hội ở Việt Nam là gì?"
+
+
+@pytest.mark.parametrize("other", [
+    Q_MAU_THUAN,
+    "theo hồ chí minh mâu thuẫn cơ bản của thời kỳ quá độ lên chủ nghĩa xã hội ở việt nam là gì",   # hoa thường, dấu câu
+    "Theo Hồ Chí Minh, mâu thuẫn cơ bản của thời kỳ quá độ lên chủ nghĩa xã hội tại Việt Nam là gì?",  # đổi một chữ
+])
+def test_near_duplicate_catches_copies(other):
+    assert ev.near_duplicate(Q_MAU_THUAN, ["Câu khác hẳn?", other]) == other
+
+
+@pytest.mark.parametrize("other", [
+    # khác trọng tâm, giống phần còn lại (ratio 0.87) → không phải câu trùng
+    "Theo Hồ Chí Minh, đặc điểm lớn nhất của thời kỳ quá độ lên chủ nghĩa xã hội ở Việt Nam là gì?",
+    "Hai chân của nền kinh tế là gì?",
+])
+def test_near_duplicate_ignores_different_questions(other):
+    assert ev.near_duplicate(Q_MAU_THUAN, [other]) is None
+
+
+def test_duplicates_within_exam_keep_the_first(fake_gemini):
+    exam = {"mcq": [mcq(Q_MAU_THUAN), mcq("Câu khác?"), mcq(Q_MAU_THUAN.upper())],
+            "essay": [essay(Q_MAU_THUAN.replace("?", "."))]}                 # tự luận chép lại câu trắc nghiệm
+    res, _ = run_validate(exam, None, fake_gemini, use_judge=False)
+    assert [q.question for q in res.mcq] == [Q_MAU_THUAN, "Câu khác?"] and res.essay == []
+    assert [r.stage for r in res.rejected] == ["trùng lặp", "trùng lặp"]
+    assert res.rejected[0].reasons == [f"gần như chép lại câu: {Q_MAU_THUAN}"]
+
+
+def test_duplicates_checked_after_judge(fake_gemini):
+    """Câu đầu bị giám khảo loại thì bản chép lại của nó không bị tính là trùng."""
+    exam = {"mcq": [mcq(Q_MAU_THUAN), mcq(Q_MAU_THUAN + " ")], "essay": []}
+    res, _ = run_validate(exam, verdicts(("C", True, False, None), ("B", True, False, None)), fake_gemini)
+    assert [q.question for q in res.mcq] == [Q_MAU_THUAN + " "]
+    assert [r.stage for r in res.rejected] == ["giám khảo"]
+
+
+def test_existing_questions_count_as_duplicates(fake_gemini):
+    llm = fake_gemini([])
+    exam = eg.GeneratedExam.model_validate({"mcq": [mcq(Q_MAU_THUAN), mcq("Câu mới?")], "essay": []})
+    res = asyncio.run(ev.validate_exam(llm, exam, PAGES, SRC.prompt_text(), use_judge=False,
+                                       existing=[Q_MAU_THUAN.lower()]))
+    assert [q.question for q in res.mcq] == ["Câu mới?"] and res.rejected[0].stage == "trùng lặp"
+
+
+def test_topup_copying_first_round_is_rejected(fake_gemini):
+    """Lần tạo bù giám khảo chỉ thấy câu mới → code phải so với câu của lần 1."""
+    first = exam_text([mcq(Q_MAU_THUAN), mcq("Trang lạ?", source_page=99)])
+    second = exam_text([mcq(Q_MAU_THUAN.replace("ở", "tại"))])               # Gemini bỏ qua lời dặn avoid
+    res, _ = gen(fake_gemini, [first, second], 2, 0)
+    assert [q.question for q in res.exam.mcq] == [Q_MAU_THUAN]
+    assert res.rejected[-1].stage == "trùng lặp" and res.notice.startswith("Chỉ tạo được 1/2")

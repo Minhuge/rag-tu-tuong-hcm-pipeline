@@ -53,6 +53,7 @@ Test chạy trên SQLite tạm (xem conftest.py), không cần Postgres.
 """
 import os
 from datetime import datetime, timezone
+from typing import Literal, get_args
 
 from dotenv import load_dotenv
 from sqlalchemy import (JSON, Boolean, CheckConstraint, DateTime, Float, ForeignKey, Index, Integer, String, Text,
@@ -159,7 +160,9 @@ class RefreshToken(Base):
 
 
 # ---------- đề thi ----------
-EXAM_VISIBILITY = ("private", "link", "public")   # chỉ người tạo / ai có share_code / mọi người
+# Literal là nguồn duy nhất: schema API dùng làm kiểu, tuple suy ra từ đó cho CheckConstraint và kiểm tra trong code
+ExamVisibility = Literal["private", "link", "public"]   # chỉ người tạo / ai có share_code / mọi người
+EXAM_VISIBILITY: tuple[str, ...] = get_args(ExamVisibility)
 EXAM_STATUS = ("draft", "published")              # đề AI phải được xem lại trước khi cho người khác làm
 EXAM_ORIGIN = ("manual", "ai")                    # tự soạn / AI sinh — cũng dùng để đếm lượt sinh đề AI mỗi ngày
 QUESTION_TYPES = ("mcq", "essay")                  # trắc nghiệm / tự luận

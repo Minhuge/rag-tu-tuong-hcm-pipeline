@@ -1,5 +1,6 @@
 """
-Fixture dùng chung: database (test_db.py, test_api.py, …) và Gemini giả cho phần tạo đề (fake_gemini).
+Fixture dùng chung: database (test_db.py, test_api.py, …), Gemini giả cho phần tạo đề (fake_gemini)
+và Qdrant trong bộ nhớ có sẵn vài chương giáo trình (qdrant).
 
 Mặc định: file SQLite tạm → chạy được ở mọi máy, không cần Postgres.
 Kiểm tra trên Postgres thật: đặt TEST_DATABASE_URL tới một database RIÊNG cho test
@@ -14,10 +15,12 @@ import re
 from types import SimpleNamespace
 
 import pytest
+from qdrant_client import QdrantClient, models
 from sqlalchemy import create_engine, event
 
 from app import auth
 from app import db
+from rag.search_rerank import COLLECTION
 
 
 @pytest.fixture
@@ -80,3 +83,25 @@ class FakeGemini:
 @pytest.fixture
 def fake_gemini():
     return FakeGemini
+
+
+def body(i: int, n: int = 300) -> str:
+    return f"Nội dung đoạn {i:02d} " + "x" * n
+
+
+@pytest.fixture
+def qdrant():
+    """Chương III: 20 đoạn trang 38–47 (point chèn lộn xộn); Chương IV: 1 đoạn; Chương V: chỉ dòng tiêu đề."""
+    client = QdrantClient(":memory:")
+    client.create_collection(COLLECTION, vectors_config=models.VectorParams(size=2, distance=models.Distance.COSINE))
+    rows = [{"chunk_id": f"chunk_{100 + i:03d}", "chapter": "Chương III", "page": 38 + i // 2, "text": body(i)}
+            for i in range(20)]
+    rows[0]["text"] = "phần cuối chương trước. CHƯƠNG III TƯ TƯỞNG HỒ CHÍ MINH VỀ CHỦ NGHĨA XÃ HỘI " + "y" * 200
+    rows[1]["text"] = ". " + body(1)
+    rows += [{"chunk_id": "chunk_200", "chapter": "Chương IV", "page": 52, "text": body(0)},
+             {"chunk_id": "chunk_300", "chapter": "Chương V", "page": 67,
+              "text": "hết chương IV. CHƯƠNG V TƯ TƯỞNG HỒ CHÍ MINH VỀ ĐẠI ĐOÀN KẾT"}]
+    order = list(range(len(rows)))[::-1]   # chèn ngược → kết quả phải tự sắp lại theo trang
+    client.upsert(COLLECTION, [models.PointStruct(id=j, vector=[1.0, 0.0], payload=rows[i])
+                               for j, i in enumerate(order)])
+    return client

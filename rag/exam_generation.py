@@ -267,7 +267,8 @@ async def _generate_round(llm, src: ChapterPassages, n_mcq: int, n_essay: int, r
     resp = await call_gemini(llm, build_exam_prompt(src, n_mcq, n_essay, avoid), exam_config())
     exam = parse_exam(resp)
     exam.mcq = [shuffle_options(q, rng) for q in exam.mcq]
-    return await validate_exam(llm, exam, set(src.pages), src.prompt_text(), use_judge), resp.model_version
+    return await validate_exam(llm, exam, set(src.pages), src.prompt_text(), use_judge, existing=avoid), \
+        resp.model_version
 
 
 async def generate_exam(llm, src: ChapterPassages, n_mcq: int, n_essay: int,
