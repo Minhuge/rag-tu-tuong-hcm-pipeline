@@ -7,19 +7,24 @@
     "dev": "vite",
     "build": "vite build",
     "lint": "oxlint",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "api:types": "cd .. && python -m scripts.export_openapi && cd web && openapi-typescript openapi.json -o src/api-schema.d.ts --default-non-nullable false",
+    "typecheck": "tsc -p jsconfig.json"
   },
   "dependencies": {
     "@phosphor-icons/react": "^2.1.10",
     "react": "^19.2.8",
     "react-dom": "^19.2.8",
-    "react-markdown": "^10.1.0"
+    "react-markdown": "^10.1.0",
+    "react-router": "^8.4.0"
   },
   "devDependencies": {
     "@types/react": "^19.2.18",
     "@types/react-dom": "^19.2.7",
     "@vitejs/plugin-react": "^6.1.1",
+    "openapi-typescript": "^7.13.0",
     "oxlint": "^1.81.0",
+    "typescript": "^5.9.3",
     "vite": "^8.3.0"
   }
 }

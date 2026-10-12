@@ -30,10 +30,34 @@ Backend ở địa chỉ khác: `API_URL=http://host:8000 npm run dev` (dev prox
 ## Cấu trúc
 
 ```
-src/api.js                  gọi /ask, /health, chuẩn hoá thông báo lỗi
+src/main.jsx                BrowserRouter
+src/Root.jsx                đăng nhập / khôi phục phiên
+src/App.jsx                 khung sau đăng nhập: thanh Chat | Bài kiểm tra, các route
+src/pages/ChatPage.jsx      trang hỏi giáo trình: lịch sử, trạng thái máy chủ
+src/pages/ExamPages.jsx     các trang bài kiểm tra
+src/api.js                  fetch dùng chung (cookie, tự làm mới phiên khi 401), ApiError, API chat
+src/examsApi.js             API bài kiểm tra (có kiểm tra kiểu)
+src/api-schema.d.ts         type sinh từ openapi.json — KHÔNG sửa tay
+openapi.json                mô tả API, xuất từ FastAPI — KHÔNG sửa tay
 src/trace.js                ChatResult → các bước 1a…4a
-src/App.jsx                 khung trang, lịch sử, trạng thái máy chủ
 src/components/Message.jsx  tin nhắn, chip trích dẫn, các lớp kiểm tra, nguồn
 src/components/Composer.jsx ô nhập (Enter gửi, Shift+Enter xuống dòng, tối đa 1000 ký tự)
 src/index.css               giao diện sáng/tối, responsive
 ```
+
+## Kiểu dữ liệu API (frontend không lệch backend)
+
+Sửa schema API ở backend (`app/exam_schemas.py`, các model trong `app/routers/`) → chạy lại:
+
+```bash
+source ../.venv/bin/activate   # cần Python của backend
+npm run api:types              # app.openapi() → openapi.json → src/api-schema.d.ts
+npm run typecheck              # kiểm tra các file có // @ts-check (src/examsApi.js…)
+```
+
+Quên chạy thì `pytest tests/test_api_schemas.py` báo "web/openapi.json chưa cập nhật". Trong VS Code, gõ sai tên
+trường ở file có `// @ts-check` sẽ bị gạch đỏ ngay.
+
+Lỗi API là `ApiError`: `message` tiếng Việt hiện thẳng lên giao diện; `fields` = lỗi từng ô nhập (422) để hiện cạnh ô
+đó; `question` = số câu bị lỗi khi publish; `retryable` = lỗi tạm thời, nên có nút "Thử lại". Nộp bài, publish, tạo đề
+AI, bắt đầu làm bài: gọi trùng trong lúc lần trước chưa xong thì dùng lại lần đang chạy (không gửi hai lần).

@@ -29,13 +29,13 @@ Thời gian (open_at, close_at) gửi theo ISO 8601, nên kèm múi giờ: "2026
 """
 from contextlib import contextmanager
 from datetime import datetime
-from typing import Literal
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Response
 from pydantic import BaseModel, Field
 
 from app import auth, deps, essay_ai, exam_ai, exams
-from app.db import ExamVisibility
+from app import exam_schemas as out
+from app.db import ExamVisibility, QuestionType
 from app.deps import get_rag
 from rag.exam_generation import CHAPTERS
 
@@ -88,7 +88,7 @@ class OptionIn(BaseModel):
 
 
 class QuestionCreate(BaseModel):
-    type: Literal["mcq", "essay"]
+    type: QuestionType
     content: str = Field(..., min_length=1, max_length=5000)
     points: float = Field(1.0, ge=0)
     rubric: str | None = Field(None, max_length=5000, description="Chỉ câu tự luận")
@@ -130,54 +130,25 @@ class AnswerIn(BaseModel):
     essay_text: str | None = Field(None, max_length=exams.MAX_ESSAY_CHARS, description="Câu tự luận")
 
 
-# ---------- schema trả về cho người làm bài ----------
-# Cố tình KHÔNG có is_correct / rubric / explanation: FastAPI bỏ mọi trường thừa theo response_model,
-# nên dù service lỡ trả thừa thì đáp án cũng không lọt ra ngoài.
-class TakerOption(BaseModel):
-    id: int
-    label: str
-    content: str
-
-
-class TakerQuestion(BaseModel):
-    id: int
-    type: str
-    order_index: int
-    content: str
-    points: float
-    options: list[TakerOption]
-
-
-class TakerExam(BaseModel):
-    id: int
-    title: str
-    description: str | None
-    duration_minutes: int | None
-    open_at: int | None
-    close_at: int | None
-    total_points: float
-    questions: list[TakerQuestion]
-
-
 # ====================== người tạo đề ======================
-@router.post("/exams", status_code=201)
+@router.post("/exams", status_code=201, response_model=out.ExamOut)
 def create_exam(req: ExamCreate, user: dict = Depends(auth.get_current_user)):
     with _http_errors():
         return exams.create_exam(user["id"], **req.model_dump())
 
 
-@router.get("/exams/mine")
+@router.get("/exams/mine", response_model=list[out.ExamListItem])
 def list_my_exams(user: dict = Depends(auth.get_current_user)):
     return exams.list_my_exams(user["id"])
 
 
-@router.get("/exams/{exam_id}/full")
+@router.get("/exams/{exam_id}/full", response_model=out.ExamFull)
 def get_exam_full(exam_id: int, user: dict = Depends(auth.get_current_user)):
     with _http_errors():
         return exams.get_exam_for_creator(user["id"], exam_id)
 
 
-@router.patch("/exams/{exam_id}")
+@router.patch("/exams/{exam_id}", response_model=out.ExamOut)
 def update_exam(exam_id: int, req: ExamUpdate, user: dict = Depends(auth.get_current_user)):
     with _http_errors():
         return exams.update_exam(user["id"], exam_id, **req.model_dump(exclude_unset=True))
@@ -190,13 +161,13 @@ def delete_exam(exam_id: int, user: dict = Depends(auth.get_current_user)):
     return Response(status_code=204)
 
 
-@router.post("/exams/{exam_id}/questions", status_code=201)
+@router.post("/exams/{exam_id}/questions", status_code=201, response_model=out.QuestionFull)
 def add_question(exam_id: int, req: QuestionCreate, user: dict = Depends(auth.get_current_user)):
     with _http_errors():
         return exams.add_question(user["id"], exam_id, **req.model_dump())
 
 
-@router.patch("/exams/{exam_id}/questions/{question_id}")
+@router.patch("/exams/{exam_id}/questions/{question_id}", response_model=out.QuestionFull)
 def update_question(exam_id: int, question_id: int, req: QuestionUpdate,
                     user: dict = Depends(auth.get_current_user)):
     with _http_errors():
@@ -210,25 +181,27 @@ def delete_question(exam_id: int, question_id: int, user: dict = Depends(auth.ge
     return Response(status_code=204)
 
 
-@router.post("/exams/{exam_id}/publish")
+@router.post("/exams/{exam_id}/publish", response_model=out.ExamOut)
 def publish_exam(exam_id: int, user: dict = Depends(auth.get_current_user)):
     with _http_errors():
         return exams.publish_exam(user["id"], exam_id)
 
 
-@router.get("/exams/{exam_id}/submissions")
+@router.get("/exams/{exam_id}/submissions", response_model=list[out.SubmissionWithUser])
 def list_submissions(exam_id: int, user: dict = Depends(auth.get_current_user)):
     with _http_errors():
         return exams.list_submissions(user["id"], exam_id)
 
 
-@router.get("/submissions/{submission_id}/review")
+@router.get("/submissions/{submission_id}/review", response_model=out.SubmissionReview,
+            response_model_exclude_unset=True)
 def review_submission(submission_id: int, user: dict = Depends(auth.get_current_user)):
     with _http_errors():
         return essay_ai.with_grading_status(exams.get_submission_for_creator(user["id"], submission_id))
 
 
-@router.patch("/submissions/{submission_id}/answers/{question_id}/grade")
+@router.patch("/submissions/{submission_id}/answers/{question_id}/grade", response_model=out.SubmissionReview,
+              response_model_exclude_unset=True)
 def grade_answer(submission_id: int, question_id: int, req: GradeIn, user: dict = Depends(auth.get_current_user)):
     """Người tạo đề chấm tay / sửa điểm một câu. Chỉ người tạo đề; người khác 404. Điểm vượt tối đa → 400."""
     with _http_errors():
@@ -237,30 +210,31 @@ def grade_answer(submission_id: int, question_id: int, req: GradeIn, user: dict 
 
 
 # ====================== người làm bài ======================
-@router.get("/exams/{exam_id}", response_model=TakerExam)
+@router.get("/exams/{exam_id}", response_model=out.TakerExam)
 def get_exam(exam_id: int, share_code: str | None = None, user: dict = Depends(auth.get_current_user)):
     with _http_errors():
         return exams.get_exam_for_taker(user["id"], exam_id, share_code)
 
 
-@router.post("/exams/{exam_id}/submissions", status_code=201)
+@router.post("/exams/{exam_id}/submissions", status_code=201, response_model=out.SubmissionOut)
 def start_submission(exam_id: int, share_code: str | None = None, user: dict = Depends(auth.get_current_user)):
     with _http_errors():
         return exams.start_submission(user["id"], exam_id, share_code)
 
 
-@router.get("/submissions/mine")
+@router.get("/submissions/mine", response_model=list[out.SubmissionOut])
 def list_my_submissions(user: dict = Depends(auth.get_current_user)):
     return exams.list_my_submissions(user["id"])
 
 
-@router.put("/submissions/{submission_id}/answers/{question_id}")
+@router.put("/submissions/{submission_id}/answers/{question_id}", response_model=out.SavedAnswer)
 def save_answer(submission_id: int, question_id: int, req: AnswerIn, user: dict = Depends(auth.get_current_user)):
     with _http_errors():
         return exams.save_answer(user["id"], submission_id, question_id, **req.model_dump())
 
 
-@router.post("/submissions/{submission_id}/submit")
+@router.post("/submissions/{submission_id}/submit", response_model=out.SubmissionResult,
+             response_model_exclude_unset=True)
 def submit(submission_id: int, background: BackgroundTasks, user: dict = Depends(auth.get_current_user)):
     """Chấm trắc nghiệm ngay. Có câu tự luận → status "submitted", AI chấm nền sau khi trả kết quả:
     gọi lại GET /submissions/{id} tới khi status = "graded"."""
@@ -273,7 +247,8 @@ def submit(submission_id: int, background: BackgroundTasks, user: dict = Depends
     return result
 
 
-@router.get("/submissions/{submission_id}")
+@router.get("/submissions/{submission_id}", response_model=out.SubmissionResult,
+            response_model_exclude_unset=True)
 def get_result(submission_id: int, user: dict = Depends(auth.get_current_user)):
     """Có `grading.still_grading = true` → AI đang chấm tự luận: gọi lại sau vài giây để lấy điểm."""
     with _http_errors():
@@ -281,13 +256,13 @@ def get_result(submission_id: int, user: dict = Depends(auth.get_current_user)):
 
 
 # ---------- tạo đề bằng AI (Phase 2) ----------
-@router.get("/chapters")
+@router.get("/chapters", response_model=list[out.ChapterOut])
 def list_chapters(user: dict = Depends(auth.get_current_user)):
     """`chapter` là giá trị truyền lại khi tạo đề (khớp payload "chapter" trong Qdrant)."""
     return [{"number": c.number, "chapter": c.key, "title": c.title} for c in CHAPTERS]
 
 
-@router.post("/exams/generate", status_code=201)
+@router.post("/exams/generate", status_code=201, response_model=out.ExamGenerated)
 async def generate_exam(req: ExamGenerate, user: dict = Depends(auth.get_current_user)):
     """
     AI tạo đề nháp từ một chương giáo trình. Trả về đề đã lưu (giống GET /exams/{id}/full) + `generation`:

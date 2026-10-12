@@ -163,11 +163,16 @@ class RefreshToken(Base):
 # Literal là nguồn duy nhất: schema API dùng làm kiểu, tuple suy ra từ đó cho CheckConstraint và kiểm tra trong code
 ExamVisibility = Literal["private", "link", "public"]   # chỉ người tạo / ai có share_code / mọi người
 EXAM_VISIBILITY: tuple[str, ...] = get_args(ExamVisibility)
-EXAM_STATUS = ("draft", "published")              # đề AI phải được xem lại trước khi cho người khác làm
-EXAM_ORIGIN = ("manual", "ai")                    # tự soạn / AI sinh — cũng dùng để đếm lượt sinh đề AI mỗi ngày
-QUESTION_TYPES = ("mcq", "essay")                  # trắc nghiệm / tự luận
-SUBMISSION_STATUS = ("in_progress", "submitted", "graded")
-GRADED_BY = ("auto", "ai", "creator")             # máy chấm mcq / AI chấm tự luận / người ra đề chấm lại
+ExamStatus = Literal["draft", "published"]          # đề AI phải được xem lại trước khi cho người khác làm
+ExamOrigin = Literal["manual", "ai"]               # tự soạn / AI sinh — cũng dùng để đếm lượt sinh đề AI mỗi ngày
+QuestionType = Literal["mcq", "essay"]             # trắc nghiệm / tự luận
+SubmissionStatus = Literal["in_progress", "submitted", "graded"]
+GradedBy = Literal["auto", "ai", "creator"]        # máy chấm mcq / AI chấm tự luận / người ra đề chấm lại
+EXAM_STATUS: tuple[str, ...] = get_args(ExamStatus)
+EXAM_ORIGIN: tuple[str, ...] = get_args(ExamOrigin)
+QUESTION_TYPES: tuple[str, ...] = get_args(QuestionType)
+SUBMISSION_STATUS: tuple[str, ...] = get_args(SubmissionStatus)
+GRADED_BY: tuple[str, ...] = get_args(GradedBy)
 
 
 class Exam(Base):
