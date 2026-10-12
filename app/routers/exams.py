@@ -10,15 +10,19 @@ Người tạo đề:
   PATCH  /exams/{id}/questions/{qid}         sửa câu hỏi     DELETE … xoá câu hỏi
   POST   /exams/{id}/publish                 xuất bản (kiểm tra đề hợp lệ)
   GET    /exams/{id}/submissions             bài làm của mọi người cho đề này
+  GET    /submissions/{sid}/review           xem một bài làm: câu trả lời, đáp án, rubric, điểm + nhận xét từng câu
+  PATCH  /submissions/{sid}/answers/{qid}/grade   chấm / sửa điểm một câu (ghi đè điểm AI, tính lại tổng)
 Người làm bài:
   GET    /exams/{id}?share_code=…            đề để làm — KHÔNG có đáp án
   POST   /exams/{id}/submissions             bắt đầu (hoặc làm tiếp) bài làm
   PUT    /submissions/{sid}/answers/{qid}    lưu câu trả lời một câu
-  POST   /submissions/{sid}/submit           nộp bài + chấm trắc nghiệm
-  GET    /submissions/{sid}                  kết quả bài của tôi
+  POST   /submissions/{sid}/submit           nộp bài + chấm trắc nghiệm; có tự luận → AI chấm nền (Phase 3)
+  GET    /submissions/{sid}                  kết quả bài của tôi (+ trạng thái chấm từng câu: hỏi lại tới khi
+                                             grading.still_grading = false)
   GET    /submissions/mine                   các bài tôi đã làm
-Tạo đề bằng AI (Phase 2):
+Tạo đề bằng AI (Phase 2, logic ở app/exam_ai.py):
   GET    /chapters                           danh sách chương (số + tên) cho dropdown
+  POST   /exams/generate                     AI tạo đề NHÁP từ một chương (chờ 10–30 giây) → sửa, publish như đề tay
 
 Thời gian (open_at, close_at) gửi theo ISO 8601, nên kèm múi giờ: "2026-10-10T08:00:00+07:00"
 (không kèm thì hiểu là UTC). Thời gian trả về là mili giây (epoch), giống các API khác.
@@ -27,15 +31,15 @@ from contextlib import contextmanager
 from datetime import datetime
 from typing import Literal
 
-from fastapi import APIRouter, Depends, HTTPException, Response
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Response
 from pydantic import BaseModel, Field
 
-from app import auth, exams
-from app.db import EXAM_VISIBILITY
+from app import auth, deps, essay_ai, exam_ai, exams
+from app.db import ExamVisibility
+from app.deps import get_rag
 from rag.exam_generation import CHAPTERS
 
 router = APIRouter(tags=["bài kiểm tra"])
-Visibility = Literal[EXAM_VISIBILITY]
 
 
 @contextmanager
@@ -44,6 +48,10 @@ def _http_errors():
         yield
     except exams.NotFound as e:
         raise HTTPException(404, str(e)) from e
+    except exams.QuotaExceeded as e:
+        raise HTTPException(429, str(e)) from e
+    except exam_ai.GenerationFailed as e:    # Qdrant / Gemini lỗi: không phải lỗi người gọi, thử lại sau
+        raise HTTPException(503, str(e)) from e
     except exams.InvalidState as e:          # lớp con của ValueError → phải bắt trước
         raise HTTPException(409, str(e)) from e
     except ValueError as e:
@@ -54,7 +62,7 @@ def _http_errors():
 class ExamCreate(BaseModel):
     title: str = Field(..., min_length=1, max_length=200, examples=["Kiểm tra chương 1"])
     description: str | None = Field(None, max_length=5000)
-    visibility: Visibility = "private"
+    visibility: ExamVisibility = "private"
     duration_minutes: int | None = Field(None, ge=1, description="Bỏ trống = không giới hạn")
     open_at: datetime | None = Field(None, description="Bỏ trống = mở ngay khi xuất bản")
     close_at: datetime | None = Field(None, description="Bỏ trống = không đóng")
@@ -65,7 +73,7 @@ class ExamCreate(BaseModel):
 class ExamUpdate(BaseModel):
     title: str | None = Field(None, min_length=1, max_length=200)
     description: str | None = Field(None, max_length=5000)
-    visibility: Visibility | None = None
+    visibility: ExamVisibility | None = None
     duration_minutes: int | None = Field(None, ge=1)
     open_at: datetime | None = None
     close_at: datetime | None = None
@@ -103,6 +111,18 @@ class QuestionUpdate(BaseModel):
     explanation: str | None = Field(None, max_length=5000)
     source_page: int | None = Field(None, ge=1)
     options: list[OptionIn] | None = Field(None, max_length=10, description="Gửi → thay toàn bộ lựa chọn")
+
+
+class ExamGenerate(BaseModel):
+    chapter: int | str = Field(..., examples=[3], description='Số chương (0 = Mở đầu) hoặc "Chương III" — xem GET /chapters')
+    n_mcq: int = Field(10, ge=0, le=exam_ai.MAX_MCQ, description="Số câu trắc nghiệm")
+    n_essay: int = Field(2, ge=0, le=exam_ai.MAX_ESSAY, description="Số câu tự luận")
+    title: str | None = Field(None, max_length=200, description="Bỏ trống = tên chương")
+
+
+class GradeIn(BaseModel):
+    score: float = Field(..., ge=0, examples=[1.5], description="Từ 0 đến điểm tối đa của câu")
+    feedback: str | None = Field(None, max_length=5000, description='Bỏ trống = giữ nhận xét cũ; "" = xoá')
 
 
 class AnswerIn(BaseModel):
@@ -202,6 +222,20 @@ def list_submissions(exam_id: int, user: dict = Depends(auth.get_current_user)):
         return exams.list_submissions(user["id"], exam_id)
 
 
+@router.get("/submissions/{submission_id}/review")
+def review_submission(submission_id: int, user: dict = Depends(auth.get_current_user)):
+    with _http_errors():
+        return essay_ai.with_grading_status(exams.get_submission_for_creator(user["id"], submission_id))
+
+
+@router.patch("/submissions/{submission_id}/answers/{question_id}/grade")
+def grade_answer(submission_id: int, question_id: int, req: GradeIn, user: dict = Depends(auth.get_current_user)):
+    """Người tạo đề chấm tay / sửa điểm một câu. Chỉ người tạo đề; người khác 404. Điểm vượt tối đa → 400."""
+    with _http_errors():
+        return essay_ai.with_grading_status(exams.grade_answer_by_creator(
+            user["id"], submission_id, question_id, score=req.score, feedback=req.feedback))
+
+
 # ====================== người làm bài ======================
 @router.get("/exams/{exam_id}", response_model=TakerExam)
 def get_exam(exam_id: int, share_code: str | None = None, user: dict = Depends(auth.get_current_user)):
@@ -227,15 +261,23 @@ def save_answer(submission_id: int, question_id: int, req: AnswerIn, user: dict 
 
 
 @router.post("/submissions/{submission_id}/submit")
-def submit(submission_id: int, user: dict = Depends(auth.get_current_user)):
+def submit(submission_id: int, background: BackgroundTasks, user: dict = Depends(auth.get_current_user)):
+    """Chấm trắc nghiệm ngay. Có câu tự luận → status "submitted", AI chấm nền sau khi trả kết quả:
+    gọi lại GET /submissions/{id} tới khi status = "graded"."""
     with _http_errors():
-        return exams.submit(user["id"], submission_id)
+        result = essay_ai.with_grading_status(exams.submit(user["id"], submission_id))
+    rag = deps.rag      # chưa nạp xong model → không chấm ngay; lần quét bù khi khởi động sẽ chấm
+    if result["status"] == "submitted" and rag is not None:
+        background.add_task(essay_ai.grade_submission, submission_id, llm=rag.llm,
+                            qdrant=rag.retriever.client, embedder=rag.retriever.embedder)
+    return result
 
 
 @router.get("/submissions/{submission_id}")
 def get_result(submission_id: int, user: dict = Depends(auth.get_current_user)):
+    """Có `grading.still_grading = true` → AI đang chấm tự luận: gọi lại sau vài giây để lấy điểm."""
     with _http_errors():
-        return exams.get_my_result(user["id"], submission_id)
+        return essay_ai.with_grading_status(exams.get_my_result(user["id"], submission_id))
 
 
 # ---------- tạo đề bằng AI (Phase 2) ----------
@@ -243,3 +285,16 @@ def get_result(submission_id: int, user: dict = Depends(auth.get_current_user)):
 def list_chapters(user: dict = Depends(auth.get_current_user)):
     """`chapter` là giá trị truyền lại khi tạo đề (khớp payload "chapter" trong Qdrant)."""
     return [{"number": c.number, "chapter": c.key, "title": c.title} for c in CHAPTERS]
+
+
+@router.post("/exams/generate", status_code=201)
+async def generate_exam(req: ExamGenerate, user: dict = Depends(auth.get_current_user)):
+    """
+    AI tạo đề nháp từ một chương giáo trình. Trả về đề đã lưu (giống GET /exams/{id}/full) + `generation`:
+    câu bị loại kèm lý do, `notice` khi tạo được ít câu hơn yêu cầu, lượt còn lại hôm nay.
+    400 số câu / chương sai · 429 hết lượt hôm nay hoặc đang tạo đề khác · 503 AI / kho giáo trình lỗi (không lưu gì).
+    """
+    r = get_rag()   # dùng lại Gemini client + Qdrant client đã tạo lúc khởi động; đang khởi động → 503
+    with _http_errors():
+        return await exam_ai.generate_exam_draft(user["id"], req.chapter, req.n_mcq, req.n_essay,
+                                                 llm=r.llm, qdrant=r.retriever.client, title=req.title)

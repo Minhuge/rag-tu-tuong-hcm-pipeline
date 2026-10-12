@@ -82,6 +82,20 @@ def load_chapter(client: QdrantClient, chapter_no: int) -> list[dict]:
     return sorted(chunks, key=lambda c: (c.get("page") or 0, c.get("chunk_id", "")))
 
 
+def load_pages(client: QdrantClient, first: int, last: int) -> list[dict]:
+    """Các đoạn có page trong [first, last], theo thứ tự trong giáo trình (chấm tự luận: trang nguồn ±1).
+    Lọc payload, không embedding. 585 đoạn → quét không cần index cho page."""
+    flt = models.Filter(must=[models.FieldCondition(key="page", range=models.Range(gte=first, lte=last))])
+    chunks, offset = [], None
+    while True:
+        points, offset = client.scroll(COLLECTION, scroll_filter=flt, limit=256, offset=offset,
+                                       with_payload=True, with_vectors=False)
+        chunks += [p.payload for p in points]
+        if offset is None:
+            break
+    return sorted(chunks, key=lambda c: (c.get("page") or 0, c.get("chunk_id", "")))
+
+
 def qdrant_search(client: QdrantClient, embedder, question: str,
                   limit: int = CANDIDATES, query_filter: models.Filter | None = None) -> list[dict]:
     """Trả về list dict chuẩn hoá {id, score, metadata} — đúng dạng reranker.rerank() cần."""

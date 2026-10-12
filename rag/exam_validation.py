@@ -14,13 +14,18 @@ Kiểm tra đề do Gemini tạo (roadmap 2.6). Câu không đạt thì bỏ RI�
                   (tự giải không bắt được câu có 2 đáp án nếu giám khảo tình cờ chọn trùng)
     supported: giáo trình khẳng định rõ lựa chọn đã chọn (trắc nghiệm) / câu hỏi + rubric (tự luận)
     duplicate_of: cùng chủ đề chính với một câu đứng trước, kể cả khác dạng
+  Loại câu trùng (2.7), bằng code, sau giám khảo: câu gần như chép lại một câu đứng trước — so cả với các câu đã giữ
+    từ lần tạo trước (existing), vì lần tạo bù giám khảo chỉ thấy câu mới. Câu trùng ý nhưng viết khác do
+    duplicate_of của giám khảo bắt; không có giám khảo (--no-judge) thì chỉ còn bước này.
 
 Thử trên đề đã lưu:  python -m scripts.gen_exam_proto --validate outputs/gen_chapter3_X.json
 """
 from __future__ import annotations
 
 import re
+from collections.abc import Iterable
 from dataclasses import dataclass, field
+from difflib import SequenceMatcher
 from typing import TYPE_CHECKING, Literal
 
 from pydantic import BaseModel, Field, ValidationError
@@ -35,10 +40,23 @@ Label = Literal["A", "B", "C", "D"]   # dùng chung với schema đề (exam_gen
 
 _LETTER_REF = re.compile(r"\b(đáp án|phương án|lựa chọn|câu)\s+[A-D]\b", re.IGNORECASE)
 _RUBRIC_POINTS = re.compile(r"\(\s*(\d+(?:[.,]\d+)?)\s*điểm\s*\)", re.IGNORECASE)
+# So ký tự không biết cụm nào là trọng tâm: "mâu thuẫn cơ bản" và "đặc điểm lớn nhất của thời kỳ quá độ…" là hai câu
+# khác nhau mà vẫn giống 0.87 (chung phần còn lại). → ngưỡng rất cao, chỉ bắt câu chép lại gần nguyên văn
+# (khác hoa thường, dấu câu, một hai chữ); trùng ý mà viết khác để giám khảo (duplicate_of) bắt.
+DUP_RATIO = 0.95
 
 
 def _norm(text: str) -> str:
     return " ".join(re.sub(r"[^\w\s]", " ", text.casefold()).split())
+
+
+def near_duplicate(question: str, others: Iterable[str], ratio: float = DUP_RATIO) -> str | None:
+    """Câu đầu tiên trong others giống question ≥ ratio (sau khi bỏ hoa thường, dấu câu); không có thì None."""
+    q = _norm(question)
+    for other in others:
+        if SequenceMatcher(None, q, _norm(other), autojunk=False).ratio() >= ratio:
+            return other
+    return None
 
 
 def rubric_total(rubric: str) -> float:
@@ -142,7 +160,7 @@ async def judge(llm, passages_text: str, mcq: list[GeneratedMCQ],
 class Rejection:
     kind: str            # "mcq" | "essay"
     question: str
-    stage: str           # "cấu trúc" | "giám khảo"
+    stage: str           # "cấu trúc" | "giám khảo" | "trùng lặp"
     reasons: list[str]
 
 
@@ -174,9 +192,27 @@ def _judge_failures(v: JudgeVerdict | None, q: GeneratedMCQ | GeneratedEssay, ki
     return out + ([f"giám khảo: {v.reason}"] if out else [])
 
 
+def _drop_duplicates(res: ValidationResult, existing: Iterable[str]) -> None:
+    """Bỏ câu gần như chép lại một câu đứng trước (trắc nghiệm trước, tự luận sau) hoặc một câu trong existing."""
+    seen = list(existing)
+    for kind, items in (("mcq", res.mcq), ("essay", res.essay)):
+        kept = []
+        for q in items:
+            dup = near_duplicate(q.question, seen)
+            if dup is None:
+                kept.append(q)
+                seen.append(q.question)
+            else:
+                res.rejected.append(Rejection(kind, q.question, "trùng lặp", [f"gần như chép lại câu: {dup}"]))
+        items[:] = kept
+
+
 async def validate_exam(llm, exam: GeneratedExam, pages: set[int], passages_text: str,
-                        use_judge: bool = True) -> ValidationResult:
-    """Tầng 1 cho mọi câu, rồi tầng 2 (một lần gọi) cho các câu qua tầng 1. use_judge=False → chỉ tầng 1."""
+                        use_judge: bool = True, existing: Iterable[str] = ()) -> ValidationResult:
+    """
+    Tầng 1 cho mọi câu, rồi tầng 2 (một lần gọi) cho các câu qua tầng 1, cuối cùng bỏ câu trùng (2.7).
+    use_judge=False → bỏ tầng 2. existing: câu hỏi đã giữ từ lần tạo trước, câu mới không được chép lại.
+    """
     res = ValidationResult()
     mcq_ok, essay_ok = [], []
     for kind, items, check, ok in (("mcq", exam.mcq, mcq_issues, mcq_ok),
@@ -190,6 +226,7 @@ async def validate_exam(llm, exam: GeneratedExam, pages: set[int], passages_text
 
     if not use_judge or not (mcq_ok or essay_ok):
         res.mcq, res.essay = mcq_ok, essay_ok
+        _drop_duplicates(res, existing)
         return res
     verdicts = await judge(llm, passages_text, mcq_ok, essay_ok)
     res.judge_calls = 1
@@ -200,4 +237,5 @@ async def validate_exam(llm, exam: GeneratedExam, pages: set[int], passages_text
                 res.rejected.append(Rejection(kind, q.question, "giám khảo", failures))
             else:
                 (res.mcq if kind == "mcq" else res.essay).append(q)
+    _drop_duplicates(res, existing)
     return res

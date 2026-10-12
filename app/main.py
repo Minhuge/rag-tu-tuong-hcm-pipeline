@@ -4,12 +4,13 @@ REST API cho chatbot giáo trình Tư tưởng Hồ Chí Minh. File này chỉ d
   routers/qa.py    GET /health, POST /search, POST /ask        hỏi–đáp không lưu lịch sử
   routers/auth.py  /auth/register, /login, /refresh, /logout, /me
   routers/chat.py  /conversations, POST /chat (NDJSON stream)   lịch sử chat theo tài khoản
-  routers/exams.py /exams, /submissions, GET /chapters          bài kiểm tra: tạo đề, làm bài, chấm trắc nghiệm
+  routers/exams.py /exams, /submissions, GET /chapters          bài kiểm tra: tạo đề, làm bài, chấm (AI chấm tự luận nền)
 
 Mọi endpoint trừ /health cần đăng nhập: cookie access_token (web) hoặc header
 Authorization: Bearer <access token> (trong /docs: bấm Authorize, dán access_token lấy từ /auth/login).
 
 Model được nạp + warmup MỘT lần lúc khởi động (gán vào app.deps.rag); mọi request dùng chung.
+Sau đó quét bù chạy nền: chấm các câu tự luận còn dở từ lần chạy trước (app/essay_ai.py: start_sweep).
 
 Web chat (React, thư mục web/):
   dev   : cd web && npm run dev       → http://localhost:5173 (Vite proxy các endpoint sang :8000)
@@ -28,7 +29,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
-from app import auth, db, deps
+from app import auth, db, deps, essay_ai
 from app.routers import auth as auth_routes
 from app.routers import chat, exams, qa
 from rag.pipeline import GEMINI_MODEL, GuardedRAG
@@ -46,7 +47,9 @@ async def lifespan(app: FastAPI):
     deps.rag = rag
     print(f"[api] sẵn sàng sau {time.perf_counter() - t:.1f}s | reranker={rag.retriever.reranker.device} "
           f"guard={rag.guard.device} gemini={GEMINI_MODEL}")
+    sweep = essay_ai.start_sweep(rag)
     yield
+    sweep.cancel()       # tắt server giữa chừng: câu chưa chấm vẫn null → lần khởi động sau quét tiếp
     deps.rag = None
 
 

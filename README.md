@@ -74,6 +74,9 @@ GEMINI_MODEL=gemini-3.8-flash        # xem tên hợp lệ bằng: python -m scr
 GEMINI_THINKING=low                  # none nếu model không hỗ trợ thinking_level
 GUARD_DEVICE=cuda                    # cpu: guard không chiếm VRAM nhưng chậm hơn (~7s/câu)
 EMBED_NUM_CTX=1024                   # context Ollama lúc truy vấn (nhỏ → tốn ít VRAM)
+AI_GEN_PER_USER_PER_DAY=5            # số đề AI mỗi người được tạo mỗi ngày (giờ Việt Nam)
+AI_GRADE_PER_USER_PER_DAY=20         # số câu tự luận AI chấm mỗi ngày cho mỗi người làm bài
+SWEEP_INTERVAL=1800                  # giây giữa hai lần quét chấm bù (câu hết lượt, job bị mất)
 ```
 
 Chạy (luôn ở thư mục gốc dự án, vì các lệnh `python -m` và `uvicorn app.main:app` tìm module từ đây):
