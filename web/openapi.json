@@ -417,7 +417,7 @@
           "lịch sử chat"
         ],
         "summary": "Chat",
-        "description": "Trả về application/x-ndjson, mỗi dòng một sự kiện:\n  {\"type\": \"conversation\", \"id\", \"title\", ...}   luôn là dòng đầu (id mới nếu vừa tạo)\n  {\"type\": \"status\", \"step\": \"guard|rewrite|retrieve|generate|judge\"}\n  {\"type\": \"delta\", \"text\": \"...\"}               từng đoạn chữ Gemini đang viết\n  {\"type\": \"done\", \"message_id\", \"result\": {...}} câu trả lời cuối đã qua kiểm tra, đã lưu vào DB\n  {\"type\": \"error\", \"message\": \"...\"}            lỗi giữa chừng; tin user vẫn được lưu để hỏi lại",
+        "description": "Trả về application/x-ndjson, mỗi dòng một sự kiện:\n  {\"type\": \"conversation\", \"id\", \"title\", ...}   luôn là dòng đầu (id mới nếu vừa tạo)\n  {\"type\": \"status\", \"step\": \"guard|rewrite|retrieve|generate|judge\"}   (trợ lý bài kiểm tra: guard|agent)\n  {\"type\": \"tool\", \"name\": \"...\"}                trợ lý bài kiểm tra đang gọi tool (list_my_submissions…)\n  {\"type\": \"delta\", \"text\": \"...\"}               từng đoạn chữ Gemini đang viết\n  {\"type\": \"done\", \"message_id\", \"result\": {...}} câu trả lời cuối đã qua kiểm tra, đã lưu vào DB\n  {\"type\": \"error\", \"message\": \"...\"}            lỗi giữa chừng; tin user vẫn được lưu để hỏi lại\nTrợ lý bài kiểm tra hết lượt hôm nay → 429 ngay, không lưu tin (không tạo cuộc trò chuyện rỗng).",
         "operationId": "chat_chat_post",
         "requestBody": {
           "content": {
@@ -891,6 +891,64 @@
         "responses": {
           "204": {
             "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/exams/{exam_id}/questions/order": {
+      "put": {
+        "tags": [
+          "bài kiểm tra"
+        ],
+        "summary": "Reorder Questions",
+        "description": "Đổi thứ tự câu (chỉ bản nháp). Thiếu / thừa / trùng câu → 409: tải lại đề rồi thử lại.",
+        "operationId": "reorder_questions_exams__exam_id__questions_order_put",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "exam_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Exam Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/QuestionOrder"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExamFull"
+                }
+              }
+            }
           },
           "422": {
             "description": "Validation Error",
@@ -1401,6 +1459,33 @@
         ]
       }
     },
+    "/exams/generate/quota": {
+      "get": {
+        "tags": [
+          "bài kiểm tra"
+        ],
+        "summary": "Generation Quota",
+        "description": "Lượt tạo đề AI còn lại hôm nay và giới hạn số câu — để trang tạo đề hiện trước khi bấm.",
+        "operationId": "generation_quota_exams_generate_quota_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AiQuota"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
     "/exams/generate": {
       "post": {
         "tags": [
@@ -1451,6 +1536,40 @@
   },
   "components": {
     "schemas": {
+      "AiQuota": {
+        "properties": {
+          "limit": {
+            "type": "integer",
+            "title": "Limit"
+          },
+          "remaining": {
+            "type": "integer",
+            "title": "Remaining"
+          },
+          "busy": {
+            "type": "boolean",
+            "title": "Busy"
+          },
+          "max_mcq": {
+            "type": "integer",
+            "title": "Max Mcq"
+          },
+          "max_essay": {
+            "type": "integer",
+            "title": "Max Essay"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "limit",
+          "remaining",
+          "busy",
+          "max_mcq",
+          "max_essay"
+        ],
+        "title": "AiQuota"
+      },
       "AnswerIn": {
         "properties": {
           "selected_option_id": {
@@ -1583,6 +1702,16 @@
             "title": "Retry",
             "description": "Hỏi lại câu cuối chưa có câu trả lời (không lưu trùng tin user)",
             "default": false
+          },
+          "mode": {
+            "type": "string",
+            "enum": [
+              "docs",
+              "exam"
+            ],
+            "title": "Mode",
+            "description": "Chỉ dùng khi tạo cuộc trò chuyện mới: \"docs\" hỏi giáo trình, \"exam\" trợ lý bài kiểm tra. Cuộc trò chuyện cũ giữ chế độ của nó.",
+            "default": "docs"
           }
         },
         "type": "object",
@@ -2703,9 +2832,9 @@
               "$ref": "#/components/schemas/OptionIn"
             },
             "type": "array",
-            "maxItems": 10,
+            "maxItems": 4,
             "title": "Options",
-            "description": "Chỉ câu trắc nghiệm"
+            "description": "Chỉ câu trắc nghiệm, tối đa 4 (A–D)"
           }
         },
         "type": "object",
@@ -2818,6 +2947,23 @@
         ],
         "title": "QuestionFull",
         "description": "Bản cho người tạo đề."
+      },
+      "QuestionOrder": {
+        "properties": {
+          "question_ids": {
+            "items": {
+              "type": "integer"
+            },
+            "type": "array",
+            "title": "Question Ids",
+            "description": "Mọi câu của đề theo thứ tự mới, mỗi câu một lần"
+          }
+        },
+        "type": "object",
+        "required": [
+          "question_ids"
+        ],
+        "title": "QuestionOrder"
       },
       "QuestionOut": {
         "properties": {
@@ -2936,14 +3082,14 @@
                   "$ref": "#/components/schemas/OptionIn"
                 },
                 "type": "array",
-                "maxItems": 10
+                "maxItems": 4
               },
               {
                 "type": "null"
               }
             ],
             "title": "Options",
-            "description": "Gửi → thay toàn bộ lựa chọn"
+            "description": "Gửi → thay toàn bộ lựa chọn (tối đa 4)"
           }
         },
         "type": "object",
@@ -3511,6 +3657,17 @@
             ],
             "title": "Deadline"
           },
+          "remaining_seconds": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Remaining Seconds"
+          },
           "submitted_at": {
             "anyOf": [
               {
@@ -3545,6 +3702,7 @@
           "max_score",
           "started_at",
           "deadline",
+          "remaining_seconds",
           "submitted_at",
           "graded_at"
         ],
@@ -3610,6 +3768,17 @@
             ],
             "title": "Deadline"
           },
+          "remaining_seconds": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Remaining Seconds"
+          },
           "submitted_at": {
             "anyOf": [
               {
@@ -3661,6 +3830,7 @@
           "max_score",
           "started_at",
           "deadline",
+          "remaining_seconds",
           "submitted_at",
           "graded_at",
           "questions",
@@ -3729,6 +3899,17 @@
             ],
             "title": "Deadline"
           },
+          "remaining_seconds": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Remaining Seconds"
+          },
           "submitted_at": {
             "anyOf": [
               {
@@ -3783,6 +3964,7 @@
           "max_score",
           "started_at",
           "deadline",
+          "remaining_seconds",
           "submitted_at",
           "graded_at",
           "user",
@@ -3852,6 +4034,17 @@
             ],
             "title": "Deadline"
           },
+          "remaining_seconds": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Remaining Seconds"
+          },
           "submitted_at": {
             "anyOf": [
               {
@@ -3889,6 +4082,7 @@
           "max_score",
           "started_at",
           "deadline",
+          "remaining_seconds",
           "submitted_at",
           "graded_at",
           "user"

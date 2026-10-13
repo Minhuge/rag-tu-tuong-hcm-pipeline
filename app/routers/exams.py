@@ -8,6 +8,7 @@ Người tạo đề:
   PATCH  /exams/{id}     DELETE /exams/{id}  sửa (chỉ bản nháp) / xoá
   POST   /exams/{id}/questions               thêm câu hỏi
   PATCH  /exams/{id}/questions/{qid}         sửa câu hỏi     DELETE … xoá câu hỏi
+  PUT    /exams/{id}/questions/order         đổi thứ tự câu
   POST   /exams/{id}/publish                 xuất bản (kiểm tra đề hợp lệ)
   GET    /exams/{id}/submissions             bài làm của mọi người cho đề này
   GET    /submissions/{sid}/review           xem một bài làm: câu trả lời, đáp án, rubric, điểm + nhận xét từng câu
@@ -22,6 +23,7 @@ Người làm bài:
   GET    /submissions/mine                   các bài tôi đã làm
 Tạo đề bằng AI (Phase 2, logic ở app/exam_ai.py):
   GET    /chapters                           danh sách chương (số + tên) cho dropdown
+  GET    /exams/generate/quota               lượt tạo đề AI còn lại hôm nay + giới hạn số câu
   POST   /exams/generate                     AI tạo đề NHÁP từ một chương (chờ 10–30 giây) → sửa, publish như đề tay
 
 Thời gian (open_at, close_at) gửi theo ISO 8601, nên kèm múi giờ: "2026-10-10T08:00:00+07:00"
@@ -94,7 +96,8 @@ class QuestionCreate(BaseModel):
     rubric: str | None = Field(None, max_length=5000, description="Chỉ câu tự luận")
     explanation: str | None = Field(None, max_length=5000)
     source_page: int | None = Field(None, ge=1)
-    options: list[OptionIn] = Field(default_factory=list, max_length=10, description="Chỉ câu trắc nghiệm")
+    options: list[OptionIn] = Field(default_factory=list, max_length=exams.MAX_OPTIONS,
+                                    description="Chỉ câu trắc nghiệm, tối đa 4 (A–D)")
 
     model_config = {"json_schema_extra": {"examples": [{
         "type": "mcq", "content": "Tư tưởng Hồ Chí Minh hình thành từ những tiền đề nào?", "points": 1,
@@ -110,7 +113,8 @@ class QuestionUpdate(BaseModel):
     rubric: str | None = Field(None, max_length=5000)
     explanation: str | None = Field(None, max_length=5000)
     source_page: int | None = Field(None, ge=1)
-    options: list[OptionIn] | None = Field(None, max_length=10, description="Gửi → thay toàn bộ lựa chọn")
+    options: list[OptionIn] | None = Field(None, max_length=exams.MAX_OPTIONS,
+                                           description="Gửi → thay toàn bộ lựa chọn (tối đa 4)")
 
 
 class ExamGenerate(BaseModel):
@@ -118,6 +122,10 @@ class ExamGenerate(BaseModel):
     n_mcq: int = Field(10, ge=0, le=exam_ai.MAX_MCQ, description="Số câu trắc nghiệm")
     n_essay: int = Field(2, ge=0, le=exam_ai.MAX_ESSAY, description="Số câu tự luận")
     title: str | None = Field(None, max_length=200, description="Bỏ trống = tên chương")
+
+
+class QuestionOrder(BaseModel):
+    question_ids: list[int] = Field(..., description="Mọi câu của đề theo thứ tự mới, mỗi câu một lần")
 
 
 class GradeIn(BaseModel):
@@ -172,6 +180,13 @@ def update_question(exam_id: int, question_id: int, req: QuestionUpdate,
                     user: dict = Depends(auth.get_current_user)):
     with _http_errors():
         return exams.update_question(user["id"], exam_id, question_id, **req.model_dump(exclude_unset=True))
+
+
+@router.put("/exams/{exam_id}/questions/order", response_model=out.ExamFull)
+def reorder_questions(exam_id: int, req: QuestionOrder, user: dict = Depends(auth.get_current_user)):
+    """Đổi thứ tự câu (chỉ bản nháp). Thiếu / thừa / trùng câu → 409: tải lại đề rồi thử lại."""
+    with _http_errors():
+        return exams.reorder_questions(user["id"], exam_id, req.question_ids)
 
 
 @router.delete("/exams/{exam_id}/questions/{question_id}", status_code=204)
@@ -260,6 +275,12 @@ def get_result(submission_id: int, user: dict = Depends(auth.get_current_user)):
 def list_chapters(user: dict = Depends(auth.get_current_user)):
     """`chapter` là giá trị truyền lại khi tạo đề (khớp payload "chapter" trong Qdrant)."""
     return [{"number": c.number, "chapter": c.key, "title": c.title} for c in CHAPTERS]
+
+
+@router.get("/exams/generate/quota", response_model=out.AiQuota)
+def generation_quota(user: dict = Depends(auth.get_current_user)):
+    """Lượt tạo đề AI còn lại hôm nay và giới hạn số câu — để trang tạo đề hiện trước khi bấm."""
+    return exam_ai.ai_quota(user["id"])
 
 
 @router.post("/exams/generate", status_code=201, response_model=out.ExamGenerated)

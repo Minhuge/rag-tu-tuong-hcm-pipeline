@@ -38,8 +38,9 @@ Lưu lịch sử chat vào PostgreSQL bằng SQLAlchemy.
                        — mỗi bài làm trả lời mỗi câu tối đa 1 lần
 
 conversations.mode: "docs" = hỏi giáo trình (RAG), "exam" = trợ lý bài kiểm tra; giữ hai lịch sử tách nhau.
+ai_calls (user_id, created_at): mỗi lần trợ lý bài kiểm tra gọi Gemini một dòng — đếm để giới hạn lượt mỗi ngày.
 Mỗi người chỉ thấy cuộc trò chuyện của chính mình (user_id). Xoá user → xoá dây chuyền
-cuộc trò chuyện, tin nhắn, refresh token, đề thi người đó tạo và bài làm của người đó.
+cuộc trò chuyện, tin nhắn, refresh token, đề thi người đó tạo, bài làm và lượt gọi AI của người đó.
 Xoá đề → xoá dây chuyền câu hỏi, lựa chọn, bài làm và câu trả lời. Xoá một lựa chọn → câu trả lời
 đã chọn nó còn lại với selected_option_id = NULL (không mất bài làm).
 Băm mật khẩu, JWT và đăng nhập nằm ở auth.py; file này chỉ lưu và đọc dữ liệu.
@@ -101,7 +102,8 @@ def _one_of(column: str, values: tuple[str, ...]) -> str:
 
 
 # Hai hệ thống chat chung một cửa sổ: docs = hỏi giáo trình (RAG hiện có), exam = trợ lý bài kiểm tra (Phase 5)
-CONVERSATION_MODES = ("docs", "exam")
+ConversationMode = Literal["docs", "exam"]       # hỏi giáo trình (RAG) / trợ lý bài kiểm tra (Phase 5)
+CONVERSATION_MODES: tuple[str, ...] = get_args(ConversationMode)
 
 
 class Conversation(Base):
@@ -302,6 +304,19 @@ class SubmissionAnswer(Base):
     selected_option: Mapped[QuestionOption | None] = relationship()
 
 
+class AiCall(Base):
+    """
+    Một lần gọi Gemini của trợ lý bài kiểm tra (Phase 5.5) — đếm để giới hạn lượt mỗi người mỗi ngày.
+    Ghi TRƯỚC khi gọi (giữ lượt): lần gọi lỗi / bị bỏ dở vẫn tính, bấm gửi lại liên tục không lách được giới hạn.
+    """
+    __tablename__ = "ai_calls"
+    __table_args__ = (Index("ix_ai_calls_user_time", "user_id", "created_at"),)
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+
 def init_db():
     if engine is None:
         raise RuntimeError("Chưa đặt DATABASE_URL trong .env (vd. postgresql+psycopg://user:pass@localhost:5432/hcm_chat)")
@@ -317,7 +332,8 @@ def _ms(dt: datetime) -> int:
 
 
 def conversation_summary(c: Conversation) -> dict:
-    return {"id": c.id, "title": c.title, "created_at": _ms(c.created_at), "updated_at": _ms(c.updated_at)}
+    return {"id": c.id, "title": c.title, "mode": c.mode, "created_at": _ms(c.created_at),
+            "updated_at": _ms(c.updated_at)}
 
 
 def message_dict(m: Message) -> dict:
@@ -358,6 +374,12 @@ def get_conversation(user_id: int, conversation_id: int) -> dict:
         return {**conversation_summary(conv), "messages": [message_dict(m) for m in conv.messages]}
 
 
+def conversation_mode(user_id: int, conversation_id: int) -> str:
+    """Chế độ của cuộc trò chuyện (docs | exam) — /chat cần biết TRƯỚC khi lưu tin (kiểm tra quota trợ lý)."""
+    with Session(engine) as s:
+        return _owned(s, user_id, conversation_id).mode
+
+
 def delete_conversation(user_id: int, conversation_id: int) -> None:
     with Session(engine) as s, s.begin():
         s.delete(_owned(s, user_id, conversation_id))
@@ -378,15 +400,16 @@ def _history(prior: list[Message]) -> list[dict]:
     return [msg for turn in turns[-HISTORY_TURNS:] for msg in turn] if HISTORY_TURNS > 0 else []
 
 
-def begin_turn(user_id: int, conversation_id: int | None, text: str, retry: bool = False) -> tuple[dict, list[dict]]:
+def begin_turn(user_id: int, conversation_id: int | None, text: str, retry: bool = False,
+               mode: str = "docs") -> tuple[dict, list[dict]]:
     """
     Bước 1–2 trong sơ đồ: lưu tin của người dùng rồi đọc lịch sử trước đó.
-    conversation_id = None → tạo cuộc trò chuyện mới, tiêu đề lấy từ câu hỏi đầu tiên.
+    conversation_id = None → tạo cuộc trò chuyện mới (chế độ mode), tiêu đề lấy từ câu hỏi đầu tiên.
     retry = True và tin cuối là chính câu hỏi này (chưa có câu trả lời) → dùng lại, không lưu trùng.
     """
     with Session(engine) as s, s.begin():
         if conversation_id is None:
-            conv = Conversation(user_id=user_id, title=make_title(text))
+            conv = Conversation(user_id=user_id, title=make_title(text), mode=mode)
             s.add(conv)
             s.flush()
         else:

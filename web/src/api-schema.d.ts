@@ -191,10 +191,12 @@ export interface paths {
          * Chat
          * @description Trả về application/x-ndjson, mỗi dòng một sự kiện:
          *       {"type": "conversation", "id", "title", ...}   luôn là dòng đầu (id mới nếu vừa tạo)
-         *       {"type": "status", "step": "guard|rewrite|retrieve|generate|judge"}
+         *       {"type": "status", "step": "guard|rewrite|retrieve|generate|judge"}   (trợ lý bài kiểm tra: guard|agent)
+         *       {"type": "tool", "name": "..."}                trợ lý bài kiểm tra đang gọi tool (list_my_submissions…)
          *       {"type": "delta", "text": "..."}               từng đoạn chữ Gemini đang viết
          *       {"type": "done", "message_id", "result": {...}} câu trả lời cuối đã qua kiểm tra, đã lưu vào DB
          *       {"type": "error", "message": "..."}            lỗi giữa chừng; tin user vẫn được lưu để hỏi lại
+         *     Trợ lý bài kiểm tra hết lượt hôm nay → 429 ngay, không lưu tin (không tạo cuộc trò chuyện rỗng).
          */
         post: operations["chat_chat_post"];
         delete?: never;
@@ -306,6 +308,26 @@ export interface paths {
         head?: never;
         /** Update Question */
         patch: operations["update_question_exams__exam_id__questions__question_id__patch"];
+        trace?: never;
+    };
+    "/exams/{exam_id}/questions/order": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Reorder Questions
+         * @description Đổi thứ tự câu (chỉ bản nháp). Thiếu / thừa / trùng câu → 409: tải lại đề rồi thử lại.
+         */
+        put: operations["reorder_questions_exams__exam_id__questions_order_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
         trace?: never;
     };
     "/exams/{exam_id}/publish": {
@@ -475,6 +497,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/exams/generate/quota": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Generation Quota
+         * @description Lượt tạo đề AI còn lại hôm nay và giới hạn số câu — để trang tạo đề hiện trước khi bấm.
+         */
+        get: operations["generation_quota_exams_generate_quota_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/exams/generate": {
         parameters: {
             query?: never;
@@ -501,6 +543,19 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /** AiQuota */
+        AiQuota: {
+            /** Limit */
+            limit: number;
+            /** Remaining */
+            remaining: number;
+            /** Busy */
+            busy: boolean;
+            /** Max Mcq */
+            max_mcq: number;
+            /** Max Essay */
+            max_essay: number;
+        };
         /** AnswerIn */
         AnswerIn: {
             /**
@@ -556,6 +611,13 @@ export interface components {
              * @default false
              */
             retry?: boolean;
+            /**
+             * Mode
+             * @description Chỉ dùng khi tạo cuộc trò chuyện mới: "docs" hỏi giáo trình, "exam" trợ lý bài kiểm tra. Cuộc trò chuyện cũ giữ chế độ của nó.
+             * @default docs
+             * @enum {string}
+             */
+            mode?: "docs" | "exam";
         };
         /** ExamCreate */
         ExamCreate: {
@@ -945,7 +1007,7 @@ export interface components {
             source_page?: number | null;
             /**
              * Options
-             * @description Chỉ câu trắc nghiệm
+             * @description Chỉ câu trắc nghiệm, tối đa 4 (A–D)
              */
             options?: components["schemas"]["OptionIn"][];
         };
@@ -975,6 +1037,14 @@ export interface components {
             explanation: string | null;
             /** Source Page */
             source_page: number | null;
+        };
+        /** QuestionOrder */
+        QuestionOrder: {
+            /**
+             * Question Ids
+             * @description Mọi câu của đề theo thứ tự mới, mỗi câu một lần
+             */
+            question_ids: number[];
         };
         /**
          * QuestionOut
@@ -1011,7 +1081,7 @@ export interface components {
             source_page?: number | null;
             /**
              * Options
-             * @description Gửi → thay toàn bộ lựa chọn
+             * @description Gửi → thay toàn bộ lựa chọn (tối đa 4)
              */
             options?: components["schemas"]["OptionIn"][] | null;
         };
@@ -1172,6 +1242,8 @@ export interface components {
             started_at: number;
             /** Deadline */
             deadline: number | null;
+            /** Remaining Seconds */
+            remaining_seconds: number | null;
             /** Submitted At */
             submitted_at: number | null;
             /** Graded At */
@@ -1201,6 +1273,8 @@ export interface components {
             started_at: number;
             /** Deadline */
             deadline: number | null;
+            /** Remaining Seconds */
+            remaining_seconds: number | null;
             /** Submitted At */
             submitted_at: number | null;
             /** Graded At */
@@ -1233,6 +1307,8 @@ export interface components {
             started_at: number;
             /** Deadline */
             deadline: number | null;
+            /** Remaining Seconds */
+            remaining_seconds: number | null;
             /** Submitted At */
             submitted_at: number | null;
             /** Graded At */
@@ -1263,6 +1339,8 @@ export interface components {
             started_at: number;
             /** Deadline */
             deadline: number | null;
+            /** Remaining Seconds */
+            remaining_seconds: number | null;
             /** Submitted At */
             submitted_at: number | null;
             /** Graded At */
@@ -1950,6 +2028,41 @@ export interface operations {
             };
         };
     };
+    reorder_questions_exams__exam_id__questions_order_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                exam_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["QuestionOrder"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExamFull"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     publish_exam_exams__exam_id__publish_post: {
         parameters: {
             query?: never;
@@ -2246,6 +2359,26 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ChapterOut"][];
+                };
+            };
+        };
+    };
+    generation_quota_exams_generate_quota_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AiQuota"];
                 };
             };
         };

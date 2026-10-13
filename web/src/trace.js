@@ -3,10 +3,30 @@
 
 const sec = (s) => (s == null ? '' : `${s < 1 ? Math.round(s * 1000) + ' ms' : s.toFixed(1) + ' s'}`)
 
-export function buildTrace(r) {
-  const t = r.timings || {}
-  const steps = []
+// Trợ lý bài kiểm tra (5.6): tool máy chủ báo về (sự kiện tool, meta.tool_calls) → chữ cho người dùng
+export const TOOLS = {
+  list_my_submissions: { name: 'Xem danh sách bài đã làm', hint: 'Đang xem danh sách bài bạn đã làm…' },
+  get_my_submission: { name: 'Mở bài làm', hint: 'Đang mở bài làm…' },
+  get_my_exam: { name: 'Xem đề bạn đã tạo', hint: 'Đang xem đề bạn đã tạo…' },
+  search_textbook: { name: 'Tìm trong giáo trình', hint: 'Đang tìm trong giáo trình…' },
+  create_exam_draft: { name: 'Tạo đề nháp bằng AI', hint: 'Đang tạo đề nháp bằng AI — thường 15–60 giây…' },
+}
+export const toolHint = (name) => TOOLS[name]?.hint ?? 'Đang tra dữ liệu…'
 
+// Tham số tool → mô tả ngắn. Không hiện id nội bộ (submission_id, exam_id): người dùng không biết chúng là gì.
+function toolDetail(args = {}) {
+  const parts = []
+  if (args.query) parts.push(`“${args.query}”`)
+  if (args.chapter != null) parts.push(`chương ${args.chapter}`)
+  if (args.question_number != null) parts.push(`Câu ${args.question_number}`)
+  if (args.n_mcq != null) parts.push(`${args.n_mcq} trắc nghiệm`)
+  if (args.n_essay != null) parts.push(`${args.n_essay} tự luận`)
+  return parts.join(' · ')
+}
+
+// 1a + 1b: chung cho hai chế độ
+function inputSteps(r, steps) {
+  const t = r.timings || {}
   steps.push({
     id: '1a',
     name: 'Kiểm tra cơ bản',
@@ -26,6 +46,37 @@ export function buildTrace(r) {
       time: sec(t.guard_s),
     })
   }
+}
+
+// Trợ lý bài kiểm tra: 1a, 1b, rồi từng tool đã gọi (T1, T2…), cuối cùng là Gemini trả lời.
+function buildAgentTrace(r) {
+  const steps = []
+  inputSteps(r, steps)
+  ;(r.tool_calls || []).forEach((c, i) => {
+    const detail = toolDetail(c.args)
+    steps.push({
+      id: `T${i + 1}`,
+      name: TOOLS[c.name]?.name ?? c.name,
+      status: c.ok ? 'ok' : 'warn',
+      detail: c.ok ? detail || 'Toàn bộ' : `Không lấy được dữ liệu${detail ? ` (${detail})` : ''}`,
+      time: c.ms != null ? sec(c.ms / 1000) : '',
+    })
+  })
+  const answered = !r.blocked_by && r.llm_calls > 0
+  steps.push({
+    id: 'AI',
+    name: 'Gemini trả lời',
+    status: answered ? 'ok' : 'skip',
+    detail: answered ? `${r.llm_calls} lần gọi Gemini, chỉ dùng dữ liệu vừa tra` : 'Không gọi Gemini',
+  })
+  return steps
+}
+
+export function buildTrace(r) {
+  if (r.mode === 'exam') return buildAgentTrace(r)
+  const t = r.timings || {}
+  const steps = []
+  inputSteps(r, steps)
 
   if (!r.retrieval) {
     steps.push({ id: '2', name: 'Retrieval guard', status: 'skip', detail: 'Không chạy' })

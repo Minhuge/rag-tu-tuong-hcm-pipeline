@@ -23,6 +23,8 @@ import { ApiError, request } from './api.js'
 /** @typedef {Schemas['ChapterOut']} ChapterOut */
 /** @typedef {Schemas['ExamGenerate']} ExamGenerate */
 /** @typedef {Schemas['ExamGenerated']} ExamGenerated */
+/** @typedef {Schemas['AiQuota']} AiQuota */
+/** @typedef {Schemas['GenerationInfo']} GenerationInfo */
 /** @typedef {Schemas['TakerExam']} TakerExam */
 /** @typedef {Schemas['SubmissionOut']} SubmissionOut */
 /** @typedef {Schemas['SubmissionWithUser']} SubmissionWithUser */
@@ -81,6 +83,10 @@ export const addQuestion = (examId, question) =>
 export const updateQuestion = (examId, questionId, fields) =>
   request(`/exams/${examId}/questions/${questionId}`, { method: 'PATCH', body: json(fields) })
 
+/** Thứ tự mới của MỌI câu (mỗi câu một lần). 409 → danh sách đã cũ, tải lại đề. @param {number} examId @param {number[]} questionIds @returns {Promise<ExamFull>} */
+export const reorderQuestions = (examId, questionIds) =>
+  request(`/exams/${examId}/questions/order`, { method: 'PUT', body: json({ question_ids: questionIds }) })
+
 /** @param {number} examId @param {number} questionId @returns {Promise<null>} */
 export const deleteQuestion = (examId, questionId) =>
   request(`/exams/${examId}/questions/${questionId}`, { method: 'DELETE' })
@@ -107,6 +113,9 @@ export const gradeAnswer = (submissionId, questionId, grade) =>
 // ---------- tạo đề bằng AI ----------
 /** @returns {Promise<ChapterOut[]>} danh sách chương cho dropdown (number 0 = Mở đầu) */
 export const listChapters = () => request('/chapters')
+
+/** Lượt tạo đề AI còn lại hôm nay, đang có đề đang tạo không, giới hạn số câu. @returns {Promise<AiQuota>} */
+export const getAiQuota = () => request('/exams/generate/quota')
 
 // AI thường mất 10–30 giây; tạo bù + Gemini quá tải có thể lâu hơn nhiều. Quá mốc này thì thôi chờ.
 export const GENERATE_TIMEOUT_MS = 180_000

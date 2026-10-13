@@ -3,7 +3,11 @@ import { useEffect, useRef, useState } from 'react'
 
 const MAX_CHARS = 1000 // trùng MAX_QUESTION_CHARS trong guards.py
 
-export default function Composer({ onSend, disabled, onStop }) {
+/**
+ * Ô nhập câu hỏi. disabled = đang chờ trả lời (hiện nút Dừng, Esc để dừng).
+ * unavailable = chế độ chưa dùng được (vd. Trợ lý bài kiểm tra trước Phase 5): khoá ô nhập, hiện lý do thay chỗ gợi ý.
+ */
+export default function Composer({ onSend, disabled, onStop, unavailable = null }) {
   const [text, setText] = useState('')
   const ref = useRef(null)
 
@@ -29,7 +33,7 @@ export default function Composer({ onSend, disabled, onStop }) {
 
   const submit = () => {
     const q = text.trim()
-    if (!q || disabled || q.length > MAX_CHARS) return
+    if (!q || disabled || unavailable || q.length > MAX_CHARS) return
     onSend(q)
     setText('')
   }
@@ -43,7 +47,8 @@ export default function Composer({ onSend, disabled, onStop }) {
           ref={ref}
           rows={1}
           value={text}
-          placeholder="Hỏi về nội dung giáo trình Tư tưởng Hồ Chí Minh…"
+          placeholder={unavailable ?? 'Hỏi về nội dung giáo trình Tư tưởng Hồ Chí Minh…'}
+          disabled={!!unavailable}
           onChange={(e) => setText(e.target.value)}
           onKeyDown={(e) => {
             if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) {
@@ -64,7 +69,7 @@ export default function Composer({ onSend, disabled, onStop }) {
               <Stop size={16} weight="fill" aria-hidden="true" />
             </button>
           ) : (
-            <button type="submit" className="send" disabled={!text.trim() || over} aria-label="Gửi câu hỏi">
+            <button type="submit" className="send" disabled={!text.trim() || over || !!unavailable} aria-label="Gửi câu hỏi">
               <PaperPlaneRight size={18} weight="fill" aria-hidden="true" />
             </button>
           )}

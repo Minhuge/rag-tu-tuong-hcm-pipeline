@@ -1,10 +1,12 @@
 """
 Lịch sử chat (PostgreSQL, xem app/db.py), mỗi người chỉ thấy của mình:
-  GET    /conversations       — danh sách cuộc trò chuyện, mới → cũ
+  GET    /conversations       — danh sách cuộc trò chuyện, mới → cũ (kèm mode: docs | exam)
   GET    /conversations/{id}  — một cuộc trò chuyện kèm toàn bộ tin nhắn
   DELETE /conversations/{id}  — xoá cuộc trò chuyện và tin nhắn của nó
   POST   /chat                — gửi câu hỏi, nhận về luồng NDJSON (mỗi dòng một sự kiện):
-           1. lưu tin user → 2. đọc lịch sử → 3. pipeline + Gemini stream → 4. lưu câu trả lời cuối
+           1. lưu tin user → 2. đọc lịch sử → 3. trả lời (stream) → 4. lưu câu trả lời cuối
+           Bước 3 theo chế độ của cuộc trò chuyện: "docs" → pipeline RAG (GuardedRAG.ask_stream),
+           "exam" → Trợ lý bài kiểm tra (app/agent_ai.agent_stream: cùng lớp kiểm tra đầu vào, rồi agent gọi tool).
 """
 import asyncio
 import json
@@ -14,7 +16,8 @@ from fastapi.responses import StreamingResponse
 from google.genai import errors as genai_errors
 from pydantic import BaseModel, Field
 
-from app import auth, db
+from app import agent_ai, auth, db, exams
+from app.db import ConversationMode
 from app.deps import get_rag
 from rag.guards import MAX_QUESTION_CHARS
 
@@ -26,6 +29,8 @@ class ChatRequest(BaseModel):
     message: str = Field(..., max_length=MAX_QUESTION_CHARS * 5,
                          examples=["Quan điểm của Hồ Chí Minh về đại đoàn kết toàn dân tộc?"])
     retry: bool = Field(False, description="Hỏi lại câu cuối chưa có câu trả lời (không lưu trùng tin user)")
+    mode: ConversationMode = Field("docs", description='Chỉ dùng khi tạo cuộc trò chuyện mới: "docs" hỏi giáo trình, '
+                                                        '"exam" trợ lý bài kiểm tra. Cuộc trò chuyện cũ giữ chế độ của nó.')
 
 
 @router.get("/conversations")
@@ -59,16 +64,26 @@ async def chat(req: ChatRequest, user: dict = Depends(auth.get_current_user)):
     """
     Trả về application/x-ndjson, mỗi dòng một sự kiện:
       {"type": "conversation", "id", "title", ...}   luôn là dòng đầu (id mới nếu vừa tạo)
-      {"type": "status", "step": "guard|rewrite|retrieve|generate|judge"}
+      {"type": "status", "step": "guard|rewrite|retrieve|generate|judge"}   (trợ lý bài kiểm tra: guard|agent)
+      {"type": "tool", "name": "..."}                trợ lý bài kiểm tra đang gọi tool (list_my_submissions…)
       {"type": "delta", "text": "..."}               từng đoạn chữ Gemini đang viết
       {"type": "done", "message_id", "result": {...}} câu trả lời cuối đã qua kiểm tra, đã lưu vào DB
       {"type": "error", "message": "..."}            lỗi giữa chừng; tin user vẫn được lưu để hỏi lại
+    Trợ lý bài kiểm tra hết lượt hôm nay → 429 ngay, không lưu tin (không tạo cuộc trò chuyện rỗng).
     """
-    r = get_rag()
     uid = user["id"]
+    try:
+        mode = req.mode if req.conversation_id is None else await asyncio.to_thread(
+            db.conversation_mode, uid, req.conversation_id)
+    except LookupError as e:
+        raise HTTPException(404, str(e)) from e
+    r = get_rag()
+    if mode == "exam" and (await asyncio.to_thread(agent_ai.agent_quota, uid))["remaining"] <= 0:
+        raise HTTPException(429, agent_ai.quota_message())
     # Bước 1–2: lưu tin user, đọc lịch sử. Lỗi ở đây (không tìm thấy cuộc trò chuyện) → trả 404 bình thường.
     try:
-        conversation, history = await asyncio.to_thread(db.begin_turn, uid, req.conversation_id, req.message, req.retry)
+        conversation, history = await asyncio.to_thread(db.begin_turn, uid, req.conversation_id, req.message, req.retry,
+                                                         req.mode)
     except LookupError as e:
         raise HTTPException(404, str(e)) from e
     conv_id = conversation["id"]
@@ -76,13 +91,17 @@ async def chat(req: ChatRequest, user: dict = Depends(auth.get_current_user)):
     async def events():
         yield _ndjson({"type": "conversation", **conversation})
         try:
-            # Bước 3: pipeline + Gemini stream
-            async for ev in r.ask_stream(req.message, history):
+            # Bước 3: trả lời theo chế độ của cuộc trò chuyện
+            answer = (agent_ai.agent_stream(r, uid, req.message, history) if conversation["mode"] == "exam"
+                      else r.ask_stream(req.message, history))
+            async for ev in answer:
                 if ev["type"] == "done":
                     # Bước 4: stream xong → lưu câu trả lời cuối (đã thay bằng câu an toàn nếu không qua 4c/4a)
                     ev = {**ev, "message_id": await asyncio.to_thread(db.save_answer, uid, conv_id, ev["result"])}
                 yield _ndjson(ev)
-        except RuntimeError as e:                        # hết quota ngày / hết credit (pipeline._call)
+        except exams.QuotaExceeded as e:                 # trợ lý bài kiểm tra: tab khác vừa dùng nốt lượt
+            yield _ndjson({"type": "error", "message": str(e)})
+        except RuntimeError as e:                        # hết quota ngày / hết credit (pipeline._call), quá giờ
             yield _ndjson({"type": "error", "message": str(e)})
         except genai_errors.APIError as e:
             yield _ndjson({"type": "error", "message": f"Lỗi gọi Gemini: {e.code} {e.message}"})

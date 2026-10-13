@@ -61,3 +61,9 @@ trường ở file có `// @ts-check` sẽ bị gạch đỏ ngay.
 Lỗi API là `ApiError`: `message` tiếng Việt hiện thẳng lên giao diện; `fields` = lỗi từng ô nhập (422) để hiện cạnh ô
 đó; `question` = số câu bị lỗi khi publish; `retryable` = lỗi tạm thời, nên có nút "Thử lại". Nộp bài, publish, tạo đề
 AI, bắt đầu làm bài: gọi trùng trong lúc lần trước chưa xong thì dùng lại lần đang chạy (không gửi hai lần).
+
+## Kiểm tra
+
+- Tự động: `npx oxlint src`, `npm run build`, `npm run typecheck`; ở thư mục gốc `pytest -q` (gồm cả tương phản màu
+  của `src/index.css`: `python -m scripts.check_contrast`).
+- Thủ công, hai tài khoản, đi hết luồng tạo đề → làm bài → chấm: [docs/KIEM_TRA_THU_CONG_PHASE4.md](../docs/KIEM_TRA_THU_CONG_PHASE4.md).

@@ -201,6 +201,11 @@ def test_visibility_rules():
     assert exams.get_exam_for_taker(B, link, code)["id"] == link
     assert exams.start_submission(B, link, code)["status"] == "in_progress"
     assert exams.get_exam_for_taker(B, public)["id"] == public
+    # đã vào bằng mã một lần → quay lại "Làm tiếp" không cần mã; người chưa từng vào vẫn cần
+    assert exams.get_exam_for_taker(B, link)["id"] == link
+    assert exams.start_submission(B, link)["status"] == "in_progress"
+    with pytest.raises(exams.NotFound):
+        exams.get_exam_for_taker(C, link)
 
 
 def test_taker_view_hides_answers():
@@ -246,6 +251,21 @@ def test_deadline_is_earlier_of_limit_and_close(clock):
     exam_id, _ = make_exam(questions=[mcq()], duration_minutes=60, close_at=T0 + timedelta(minutes=5))
     sub = exams.start_submission(B, exam_id)
     assert sub["deadline"] == db._ms(T0 + timedelta(minutes=5))              # đề đóng trước khi hết 60 phút
+
+
+def test_remaining_seconds_comes_from_server_clock(clock):
+    """Trang làm bài đếm ngược từ remaining_seconds — máy chủ tính, không phụ thuộc giờ máy người dùng."""
+    exam_id, _ = make_exam(questions=[mcq()], duration_minutes=10)
+    sub = exams.start_submission(B, exam_id)
+    assert sub["remaining_seconds"] == 600
+    clock.advance(minutes=3)
+    assert exams.start_submission(B, exam_id)["remaining_seconds"] == 420         # làm tiếp: còn 7 phút
+    clock.advance(minutes=20)
+    assert exams.get_my_result(B, sub["id"])["remaining_seconds"] == 0            # quá hạn: 0, không âm
+    exams.submit(B, sub["id"])
+    assert exams.get_my_result(B, sub["id"])["remaining_seconds"] is None         # đã nộp: không đếm nữa
+    untimed, _ = make_exam(questions=[mcq()])
+    assert exams.start_submission(B, untimed)["remaining_seconds"] is None        # không giới hạn thời gian
 
 
 # ====================== làm bài ======================
@@ -415,3 +435,30 @@ def test_cookie_requests_need_csrf_header(client):
     assert no_header.post(f"/exams/{exam_id}/submissions").status_code == 403
     with_header = TestClient(api.app, cookies=cookies, headers={"X-Requested-With": "fetch"})
     assert with_header.post(f"/exams/{exam_id}/submissions").status_code == 201
+
+
+def test_reorder_questions():
+    exam_id, qs = make_exam(questions=[mcq("Một?"), mcq("Hai?"), essay("Ba?")], publish=False)
+    qids = [q["id"] for q in qs]
+    out = exams.reorder_questions(A, exam_id, [qids[2], qids[0], qids[1]])
+    assert [q["content"] for q in out["questions"]] == ["Ba?", "Một?", "Hai?"]
+    assert [q["content"] for q in exams.get_exam_for_creator(A, exam_id)["questions"]] == ["Ba?", "Một?", "Hai?"]
+    new = exams.add_question(A, exam_id, **mcq("Bốn?"))                     # câu mới vẫn vào cuối
+    assert exams.get_exam_for_creator(A, exam_id)["questions"][-1]["id"] == new["id"]
+    for bad in ([qids[0], qids[1]], [*qids, new["id"], qids[0]], [*qids, new["id"], 999]):
+        with pytest.raises(exams.InvalidState):
+            exams.reorder_questions(A, exam_id, bad)                         # thiếu / trùng / lạ
+    with pytest.raises(exams.NotFound):
+        exams.reorder_questions(B, exam_id, [*qids, new["id"]])              # không phải đề của B
+    exams.publish_exam(A, exam_id)
+    with pytest.raises(exams.InvalidState):
+        exams.reorder_questions(A, exam_id, [*qids, new["id"]])              # đã xuất bản: khoá
+
+
+def test_mcq_has_at_most_four_options():
+    exam_id, _ = make_exam(publish=False)
+    with pytest.raises(ValueError, match="Tối đa 4"):
+        exams.add_question(A, exam_id, **mcq(labels="ABCDE"))
+    q = exams.add_question(A, exam_id, **mcq())                               # đủ 4 (A–D) thì được
+    with pytest.raises(ValueError, match="Tối đa 4"):
+        exams.update_question(A, exam_id, q["id"], options=[{"label": c, "content": c} for c in "ABCDE"])
