@@ -1,9 +1,11 @@
-import { List, Plus, Star } from '@phosphor-icons/react'
+import { Clock, FilePlus, List, LockSimple, Plus, Star } from '@phosphor-icons/react'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { Link } from 'react-router'
 import { deleteConversation, getConversation, health, listConversations, streamChat, toSummary } from '../api.js'
 import Composer from '../components/Composer.jsx'
 import { AssistantMessage, ErrorMessage, StreamingMessage, UserMessage } from '../components/Message.jsx'
 import Sidebar from '../components/Sidebar.jsx'
+import { MODES, modeOf } from '../chatModes.js'
 import { loadActiveId, markUnanswered, saveActiveId, toUiMessages } from '../history.js'
 
 const SUGGESTIONS = [
@@ -12,6 +14,19 @@ const SUGGESTIONS = [
   'Hồ Chí Minh quan niệm thế nào về vai trò lãnh đạo của Đảng Cộng sản?',
   'Đối tượng và phương pháp nghiên cứu của môn học là gì?',
 ]
+
+// Trợ lý bài kiểm tra (5.6, 5.8): câu mẫu cho từng việc chính — điểm, phần yếu, giải thích câu sai, tạo đề nháp
+const EXAM_SUGGESTIONS = [
+  'Bài gần nhất tôi được mấy điểm?',
+  'Tôi yếu phần nào, nên ôn trang nào?',
+  'Câu sai đầu tiên ở bài gần nhất của tôi, vì sao sai?',
+  'Tạo giúp tôi đề 10 câu trắc nghiệm chương 3',
+]
+
+const DISCLAIMER = {
+  docs: 'Trợ lý nhớ 2 lượt hỏi–đáp gần nhất để hiểu câu hỏi nối tiếp. Mọi ý trả lời chỉ lấy từ giáo trình — hãy đối chiếu với phần nguồn.',
+  exam: 'Trợ lý chỉ đọc bài làm và đề của chính bạn, nhớ 2 lượt hỏi–đáp gần nhất. Điểm chính thức xem ở trang Bài kiểm tra.',
+}
 
 const UNDO_MS = 6000
 const NO_MESSAGES = [] // hằng số → tham chiếu không đổi giữa các lần render
@@ -74,7 +89,7 @@ function HealthPill() {
 
 /** Trang /chat: hỏi đáp giáo trình (đăng xuất nằm ở thanh điều hướng chung — App.jsx). */
 export default function ChatPage({ user }) {
-  const [conversations, setConversations] = useState([]) // tóm tắt từ máy chủ: { id, title, createdAt, updatedAt }
+  const [conversations, setConversations] = useState([]) // tóm tắt từ máy chủ: { id, title, mode, createdAt, updatedAt }
   const [listState, setListState] = useState('loading') // loading | ok | error
   // null = "Cuộc trò chuyện mới" chưa có câu hỏi nào; F5 mở lại cuộc đang xem (nhớ trong localStorage)
   const [activeId, setActiveId] = useState(() => loadActiveId(user.id))
@@ -83,6 +98,7 @@ export default function ChatPage({ user }) {
   const [pending, setPending] = useState(null) // { key, startedAt, controller, step, text }
   const [undo, setUndo] = useState(null) // { conversation, wasActive }: đã ẩn, chờ hết giờ mới xoá trên máy chủ
   const [drawerOpen, setDrawerOpen] = useState(false)
+  const [newMode, setNewMode] = useState('docs') // chế độ của cuộc trò chuyện MỚI (4.9); cuộc cũ giữ chế độ của nó
   const narrow = useIsNarrow()
   const bottomRef = useRef(null)
   const menuRef = useRef(null)
@@ -171,9 +187,6 @@ export default function ChatPage({ user }) {
     if (undoRef.current) commitDelete(undoRef.current)
   }, [commitDelete])
 
-  useEffect(() => {
-    document.title = 'Hỏi giáo trình · Trợ lý Tư tưởng HCM'
-  }, [])
 
   const remove = (id) => {
     const conversation = conversations.find((c) => c.id === id)
@@ -219,6 +232,8 @@ export default function ChatPage({ user }) {
         setConversations((cs) => [summary, ...cs.filter((c) => c.id !== summary.id)])
       } else if (ev.type === 'status') {
         setPending((p) => p && { ...p, step: ev.step })
+      } else if (ev.type === 'tool') {
+        setPending((p) => p && { ...p, step: 'tool', tool: ev.name }) // trợ lý bài kiểm tra đang tra dữ liệu
       } else if (ev.type === 'delta') {
         setPending((p) => p && { ...p, text: p.text + ev.text })
       } else if (ev.type === 'done') {
@@ -232,7 +247,7 @@ export default function ChatPage({ user }) {
     }
 
     try {
-      await streamChat({ conversationId: activeId, message: question, retry, signal: controller.signal, onEvent })
+      await streamChat({ conversationId: activeId, message: question, retry, mode: newMode, signal: controller.signal, onEvent })
       if (!finished) append({ id: uid(), role: 'error', message: 'Mất kết nối với máy chủ giữa chừng.', question })
     } catch (e) {
       const message = e.name === 'AbortError' ? 'Đã dừng câu hỏi này.' : e.message
@@ -240,7 +255,7 @@ export default function ChatPage({ user }) {
     } finally {
       setPending(null)
     }
-  }, [activeId])
+  }, [activeId, newMode])
 
   // ---------- điều hướng ----------
   const closeDrawer = () => {
@@ -258,6 +273,7 @@ export default function ChatPage({ user }) {
       })
     }
     setActiveId(null)
+    setNewMode('docs')
     setThreadError(null)
     setDrawerOpen(false)
   }
@@ -269,6 +285,13 @@ export default function ChatPage({ user }) {
   }
 
   const empty = display.length === 0 && !pendingHere && !loadingThread && !threadError
+  // chế độ đang dùng: cuộc trò chuyện đang mở giữ chế độ của nó; màn hình mới theo lựa chọn
+  const mode = activeId === null ? newMode : (conversations.find((c) => c.id === activeId)?.mode ?? 'docs')
+  const unavailable = modeOf(mode).ready ? null : `${modeOf(mode).label} sắp có — chọn "Hỏi giáo trình" để đặt câu hỏi`
+
+  useEffect(() => {
+    document.title = `${modeOf(mode).label} · Trợ lý Tư tưởng HCM`
+  }, [mode])
 
   return (
     <div className="layout">
@@ -295,7 +318,7 @@ export default function ChatPage({ user }) {
             <span className="logo" aria-hidden="true"><Star size={20} weight="fill" /></span>
             <div>
               <h1>Trợ lý Tư tưởng Hồ Chí Minh</h1>
-              <p>Trả lời dựa trên giáo trình, có trích dẫn chương và trang</p>
+              <ModeLine mode={mode} isNew={activeId === null} onNew={startNew} />
             </div>
           </div>
           <div className="top-actions">
@@ -318,16 +341,21 @@ export default function ChatPage({ user }) {
           )}
           {empty ? (
             <section className="welcome">
-              <h2>Bạn muốn ôn phần nào?</h2>
-              <p>
-                Mỗi câu hỏi đi qua 6 lớp kiểm tra: lọc đầu vào, Qwen3Guard, kiểm tra tài liệu liên quan,
-                Gemini trả lời chỉ từ giáo trình, kiểm tra trích dẫn và giám khảo khi cần.
-              </p>
-              <div className="suggestions">
-                {SUGGESTIONS.map((q) => (
-                  <button key={q} type="button" onClick={() => send(q)} disabled={!!pending}>{q}</button>
-                ))}
-              </div>
+              {activeId === null && <ModePicker value={newMode} onChange={setNewMode} disabled={!!pending} />}
+              {mode === 'exam' ? <ExamWelcome onAsk={send} disabled={!!pending} /> : (
+                <>
+                  <h2>Bạn muốn ôn phần nào?</h2>
+                  <p>
+                    Mỗi câu hỏi đi qua 6 lớp kiểm tra: lọc đầu vào, Qwen3Guard, kiểm tra tài liệu liên quan,
+                    Gemini trả lời chỉ từ giáo trình, kiểm tra trích dẫn và giám khảo khi cần.
+                  </p>
+                  <div className="suggestions">
+                    {SUGGESTIONS.map((q) => (
+                      <button key={q} type="button" onClick={() => send(q)} disabled={!!pending}>{q}</button>
+                    ))}
+                  </div>
+                </>
+              )}
             </section>
           ) : (
             // role=log: tin nhắn mới được trình đọc màn hình đọc lần lượt, không cần di chuyển focus
@@ -341,7 +369,9 @@ export default function ChatPage({ user }) {
                     onRetry={isLast && !pending ? () => send(m.question, { retry: true }) : null} />
                 )
               })}
-              {pendingHere && <StreamingMessage startedAt={pending.startedAt} step={pending.step} text={pending.text} />}
+              {pendingHere && (
+                <StreamingMessage startedAt={pending.startedAt} step={pending.step} tool={pending.tool} text={pending.text} />
+              )}
             </div>
           )}
           <div ref={bottomRef} />
@@ -355,14 +385,94 @@ export default function ChatPage({ user }) {
             </div>
           )}
           {/* Máy chủ trả lời từng câu một → đang chờ ở cuộc trò chuyện khác thì ô nhập cũng phải đợi */}
-          <Composer onSend={send} disabled={!!pending} onStop={() => pending?.controller.abort()} />
+          <Composer onSend={send} disabled={!!pending} onStop={() => pending?.controller.abort()} unavailable={unavailable} />
           <p className="disclaimer">
             {pending && !pendingHere
               ? 'Đang chờ trả lời ở một cuộc trò chuyện khác — mở lại mục đó để xem.'
-              : 'Trợ lý nhớ 2 lượt hỏi–đáp gần nhất để hiểu câu hỏi nối tiếp. Mọi ý trả lời chỉ lấy từ giáo trình — hãy đối chiếu với phần nguồn.'}
+              : DISCLAIMER[mode] ?? DISCLAIMER.docs}
           </p>
         </footer>
       </div>
     </div>
+  )
+}
+
+/** Chọn chế độ cho cuộc trò chuyện mới (4.9): radio dạng thẻ — bàn phím dùng mũi tên như radio thường. */
+function ModePicker({ value, onChange, disabled }) {
+  return (
+    <fieldset className="mode-switch" disabled={disabled}>
+      <legend className="sr-only">Chế độ trò chuyện</legend>
+      {Object.entries(MODES).map(([key, m]) => (
+        <label key={key} className={`mode-option ${value === key ? 'checked' : ''}`}>
+          <input type="radio" name="chat-mode" value={key} checked={value === key} onChange={() => onChange(key)} />
+          <m.Icon size={20} weight={value === key ? 'fill' : 'regular'} aria-hidden="true" />
+          <span className="mode-text">
+            <span className="mode-label">
+              {m.label}
+              {!m.ready && <span className="soon-badge">Sắp có</span>}
+            </span>
+            <span className="mode-desc">{m.text}</span>
+          </span>
+        </label>
+      ))}
+    </fieldset>
+  )
+}
+
+/**
+ * Màn hình mới của Trợ lý bài kiểm tra (5.6): làm được gì, câu mẫu, và hai giới hạn người dùng cần biết trước —
+ * nói rõ ngay từ đầu để lúc trợ lý từ chối không bị bất ngờ.
+ */
+function ExamWelcome({ onAsk, disabled }) {
+  return (
+    <>
+      <h2>Hỏi về bài kiểm tra của bạn</h2>
+      <p>
+        Trợ lý tự tra bài bạn đã làm, đề bạn đã tạo và giáo trình để trả lời: được mấy điểm, sai câu nào và vì sao,
+        nên ôn lại trang nào — hoặc tạo đề nháp theo chương cho bạn.
+      </p>
+      <div className="suggestions">
+        {EXAM_SUGGESTIONS.map((q) => (
+          <button key={q} type="button" onClick={() => onAsk(q)} disabled={disabled}>{q}</button>
+        ))}
+      </div>
+      <ul className="assist-notes">
+        <li>
+          <LockSimple size={16} weight="bold" aria-hidden="true" />
+          <span>Chỉ xem được bài làm và đề của chính bạn.</span>
+        </li>
+        <li>
+          <Clock size={16} weight="bold" aria-hidden="true" />
+          <span>Bài đang làm dở: trợ lý không gợi ý đáp án — nộp bài rồi quay lại hỏi.</span>
+        </li>
+        <li>
+          <FilePlus size={16} weight="bold" aria-hidden="true" />
+          <span>Đề trợ lý tạo luôn là bản nháp, tính vào lượt tạo đề AI hôm nay — bạn xem lại rồi tự xuất bản.</span>
+        </li>
+      </ul>
+      <p className="assist-link">
+        Xem tất cả bài và đề ở <Link to="/exams">trang Bài kiểm tra</Link>.
+      </p>
+    </>
+  )
+}
+
+/**
+ * Dòng phụ dưới tiêu đề: chế độ đang dùng. Trong một cuộc trò chuyện cũ thì chỉ chỗ đổi chế độ (cuộc trò chuyện mới)
+ * — nếu không, người dùng không biết có "Trợ lý bài kiểm tra" vì trang mở lại cuộc trò chuyện gần nhất.
+ */
+function ModeLine({ mode, isNew, onNew }) {
+  const { Icon, label } = modeOf(mode)
+  return (
+    <p className="mode-line">
+      <span className="mode-chip"><Icon size={14} weight="fill" aria-hidden="true" />{label}</span>
+      {isNew
+        ? <span className="mode-hint">chọn chế độ bên dưới</span>
+        : (
+          <button type="button" className="link-btn mode-hint" onClick={onNew}>
+            Đổi chế độ: cuộc trò chuyện mới
+          </button>
+        )}
+    </p>
   )
 }

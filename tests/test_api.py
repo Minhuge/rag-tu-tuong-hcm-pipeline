@@ -117,3 +117,10 @@ def test_delete(client, head_a):
 def test_endpoints_require_login(client, method, path):
     res = getattr(client, method)(path)
     assert res.status_code == 401 and res.headers["www-authenticate"] == "Bearer"
+
+
+def test_conversation_mode(client, head_a):
+    """4.9: cuộc trò chuyện có chế độ, mặc định "docs"; chế độ lạ → 422. Chế độ "exam": tests/test_agent_chat.py."""
+    chat(client, "Câu hỏi giáo trình", head_a)
+    assert [c["mode"] for c in client.get("/conversations", headers=head_a).json()] == ["docs"]
+    assert client.post("/chat", json={"message": "x", "mode": "khac"}, headers=head_a).status_code == 422

@@ -21,12 +21,19 @@ rag/                    Lõi RAG
   search_rerank.py      Qdrant → rerank → retrieval guard (pass / partial / refuse)
   guards.py             Các lớp guardrail: 1a regex, 1b Qwen3Guard, 3 system prompt, 4c trích dẫn, 4a giám khảo
   pipeline.py           GuardedRAG: ghép toàn bộ luồng hỏi–đáp
+agent/                  Trợ lý bài kiểm tra (Phase 5)
+  graph.py              Vòng lặp tool calling: LangGraph điều khiển, Gemini gọi qua google-genai
+  tools.py              4 tool chỉ đọc: bài mình làm, đề mình tạo, tìm giáo trình (user_id lấy từ JWT)
+  prompts.py            Prompt hệ thống (có ngày hôm nay, quy tắc chọn bài / hỏi lại / không giải bài đang thi)
 scripts/                Công cụ dòng lệnh (chạy bằng python -m scripts.<tên> ở thư mục gốc)
   ingest.py             Load PDF → clean → chunk → embed → upsert Qdrant
   search.py             Kiểm thử semantic search thuần (có filter theo chương)
   calibrate.py          Hiệu chỉnh ngưỡng lớp 2 (retrieval guard)
   eval_ragas.py         Đánh giá chất lượng câu trả lời bằng RAGAS
   list_models.py        Liệt kê model Gemini mà API key gọi được
+  agent_proto.py        Thử trợ lý với Gemini thật: prompt + tool thật trên database tạm, 13 tình huống
+  agent_data.py         Dữ liệu mẫu (database tạm) cho agent_proto và eval_agent
+  eval_agent.py         Đánh giá trợ lý: data/eval_agent_testset.json × nhiều lần chạy, chấm bằng luật
   create_user.py        Tạo tài khoản (vd. quản trị viên đầu tiên)
   migrate_sqlite.py     Chuyển lịch sử chat cũ từ SQLite sang PostgreSQL (đã chạy xong)
 tests/                  pytest: reranker, guardrail, pipeline, database, API, đăng nhập (không tốn quota Gemini)
@@ -77,6 +84,9 @@ EMBED_NUM_CTX=1024                   # context Ollama lúc truy vấn (nhỏ →
 AI_GEN_PER_USER_PER_DAY=5            # số đề AI mỗi người được tạo mỗi ngày (giờ Việt Nam)
 AI_GRADE_PER_USER_PER_DAY=20         # số câu tự luận AI chấm mỗi ngày cho mỗi người làm bài
 SWEEP_INTERVAL=1800                  # giây giữa hai lần quét chấm bù (câu hết lượt, job bị mất)
+AGENT_CALLS_PER_USER_PER_DAY=100     # lượt gọi Gemini của Trợ lý bài kiểm tra mỗi người mỗi ngày (~2–3 lượt / câu hỏi)
+AGENT_MAX_TOOL_ROUNDS=5              # số lượt gọi tool tối đa cho một tin nhắn
+AGENT_TIMEOUT=180                    # giây tối đa cho một tin nhắn của trợ lý (tạo đề nháp mất 15–60 s)
 ```
 
 Chạy (luôn ở thư mục gốc dự án, vì các lệnh `python -m` và `uvicorn app.main:app` tìm module từ đây):

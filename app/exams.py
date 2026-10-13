@@ -41,7 +41,7 @@ from app.db import (EXAM_VISIBILITY, QUESTION_TYPES, Exam, Question, QuestionOpt
                     User, utcnow)
 
 MIN_MCQ_OPTIONS = 2
-MAX_OPTIONS = 10
+MAX_OPTIONS = 4                           # A–D: câu trắc nghiệm tối đa 4 lựa chọn (giống đề AI tạo)
 MAX_ESSAY_CHARS = 20_000
 DEADLINE_GRACE = timedelta(seconds=30)     # bù trễ mạng: câu trả lời gửi sát giờ vẫn được nhận
 VN_TZ = timezone(timedelta(hours=7))       # Việt Nam không đổi giờ theo mùa → không cần gói tzdata
@@ -111,9 +111,13 @@ def _deadline(sub: Submission, exam: Exam) -> datetime | None:
 
 
 def _submission_summary(sub: Submission, exam: Exam) -> dict:
+    deadline = _deadline(sub, exam)
+    # số giây còn lại do MÁY CHỦ tính: trang làm bài đếm ngược từ đây, không dựa vào giờ máy người dùng (có thể lệch)
+    remaining = (max((deadline - _now()).total_seconds(), 0.0)
+                 if deadline is not None and sub.status == "in_progress" else None)
     return {"id": sub.id, "exam_id": exam.id, "exam_title": exam.title, "status": sub.status,
             "score": sub.score, "max_score": sub.max_score, "started_at": _ms(sub.started_at),
-            "deadline": _ms(_deadline(sub, exam)), "submitted_at": _ms(sub.submitted_at),
+            "deadline": _ms(deadline), "remaining_seconds": remaining, "submitted_at": _ms(sub.submitted_at),
             "graded_at": _ms(sub.graded_at)}
 
 
@@ -131,13 +135,17 @@ def _require_draft(exam: Exam) -> None:
 
 
 def _takeable_exam(s: Session, user_id: int, exam_id: int, share_code: str | None) -> Exam:
-    """Đề người này được làm: đã xuất bản VÀ (của chính mình / công khai / có đúng mã chia sẻ)."""
+    """Đề người này được làm: đã xuất bản VÀ (của chính mình / công khai / có đúng mã chia sẻ / đã từng bắt đầu
+    làm đề này — tức đã có mã lúc vào lần đầu, nên quay lại "Làm tiếp" từ danh sách bài đã làm không cần mã nữa)."""
     exam = s.get(Exam, exam_id)
     if exam is not None and exam.status == "published":
         if exam.created_by == user_id or exam.visibility == "public":
             return exam
         if (exam.visibility == "link" and share_code and exam.share_code
                 and secrets.compare_digest(share_code, exam.share_code)):
+            return exam
+        if s.scalar(select(Submission.id).where(Submission.exam_id == exam.id, Submission.user_id == user_id)
+                    .limit(1)) is not None:
             return exam
     raise NotFound("Không tìm thấy đề thi")
 
@@ -361,6 +369,24 @@ def update_question(user_id: int, exam_id: int, question_id: int, **fields) -> d
         exam.updated_at = _now()
         s.flush()
         return _question_dict(q, reveal=True)
+
+
+def reorder_questions(user_id: int, exam_id: int, question_ids: list[int]) -> dict:
+    """Đặt lại thứ tự câu (trình sửa đề, 4.5). question_ids phải đúng là mọi câu của đề, mỗi câu một lần.
+    Trả về giống get_exam_for_creator."""
+    with Session(db.engine) as s, s.begin():
+        exam = _own_exam(s, user_id, exam_id)
+        _require_draft(exam)
+        by_id = {q.id: q for q in exam.questions}
+        if len(question_ids) != len(set(question_ids)) or set(question_ids) != set(by_id):
+            raise InvalidState("Danh sách câu đã cũ (có câu vừa được thêm / xoá ở nơi khác) — tải lại trang")
+        for i, qid in enumerate(question_ids):
+            by_id[qid].order_index = i
+        exam.updated_at = _now()
+        s.flush()
+        s.refresh(exam, ["questions"])          # quan hệ đã nạp theo thứ tự cũ → nạp lại theo order_index mới
+        return {**_exam_dict(exam, creator=True),
+                "questions": [_question_dict(q, reveal=True) for q in exam.questions]}
 
 
 def delete_question(user_id: int, exam_id: int, question_id: int) -> None:
@@ -624,6 +650,14 @@ def list_my_submissions(user_id: int) -> list[dict]:
         rows = s.execute(select(Submission, Exam).join(Exam, Exam.id == Submission.exam_id)
                          .where(Submission.user_id == user_id).order_by(Submission.started_at.desc()))
         return [_submission_summary(sub, exam) for sub, exam in rows]
+
+
+def taken_exam_descriptions(user_id: int) -> dict[int, str | None]:
+    """{exam_id: mô tả} của các đề user_id đã làm — trợ lý (Phase 5) dùng để nhận ra "đề chương 3" khi tên đề không ghi."""
+    with Session(db.engine) as s:
+        rows = s.execute(select(Exam.id, Exam.description).join(Submission, Submission.exam_id == Exam.id)
+                         .where(Submission.user_id == user_id).distinct())
+        return {exam_id: desc for exam_id, desc in rows}
 
 
 # ====================== CHẤM TỰ LUẬN (Phase 3) ======================

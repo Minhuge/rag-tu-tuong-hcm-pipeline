@@ -1,11 +1,15 @@
-import { ArrowClockwise, Check, Minus, Star, Warning, WarningCircle, X } from '@phosphor-icons/react'
+import { ArrowClockwise, ArrowRight, Check, FilePlus, Minus, Star, Warning, WarningCircle, X } from '@phosphor-icons/react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import Markdown from 'react-markdown'
-import { BLOCK_LABEL, buildTrace, formatSeconds, visibleSources } from '../trace.js'
+import { Link } from 'react-router'
+import { BLOCK_LABEL, buildTrace, formatSeconds, toolHint, visibleSources } from '../trace.js'
 
 // [Chương II, trang 45] → link nội bộ để render thành chip bấm được.
 const CITE_RE = /\[(Chương[^\]]+)\]/g
+// Trợ lý bài kiểm tra trích cả [trang 46] (câu hỏi chỉ có số trang); không có bảng nguồn → chip tĩnh.
+const AGENT_CITE_RE = /\[((?:Chương|trang)[^\]]+)\]/g
 const CITE_PREFIX = '#cite:'
+const QUOTA_NOTE_AT = 20 // trợ lý bài kiểm tra: còn ít lượt hơn → báo dưới câu trả lời
 const LONG_SOURCE = 320 // đoạn nguồn dài hơn → thu gọn, có nút "Xem thêm"
 
 // Trạng thái không chỉ bằng màu: kèm icon (mắt thường) và chữ (trình đọc màn hình).
@@ -19,8 +23,8 @@ const STATUS = {
 const prefersReducedMotion = () => window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
 const scrollBehavior = () => (prefersReducedMotion() ? 'auto' : 'smooth')
 
-function linkCitations(text) {
-  return text.replace(CITE_RE, (_, label) => `[${label}](${CITE_PREFIX}${encodeURIComponent(label)})`)
+function linkCitations(text, re = CITE_RE) {
+  return text.replace(re, (_, label) => `[${label}](${CITE_PREFIX}${encodeURIComponent(label)})`)
 }
 
 // Chip "Chương V, trang 83" khớp nguồn nào? Ưu tiên khớp cả trang, sau đó chỉ chương.
@@ -56,8 +60,8 @@ function SourceItem({ source, flash, itemRef }) {
     <li ref={itemRef} tabIndex={-1} className={flash ? 'flash' : ''}>
       <div className="src-head">
         <span className="src-label">{source.source}</span>
-        <span className="score">
-          <span className="score-bar" aria-hidden="true">
+        <span className="src-score">
+          <span className="src-score-bar" aria-hidden="true">
             <span style={{ width: `${Math.round(source.rerank_score * 100)}%` }} />
           </span>
           <span className="sr-only">Mức liên quan </span>
@@ -76,6 +80,29 @@ function SourceItem({ source, flash, itemRef }) {
   )
 }
 
+/**
+ * Đề nháp trợ lý vừa tạo (5.8, dữ liệu của tool create_exam_draft): luôn có nút mở đề, không phụ thuộc vào việc
+ * model có chép đúng link vào câu trả lời hay không.
+ */
+function DraftCard({ draft }) {
+  return (
+    <div className="draft-card">
+      <FilePlus size={22} className="draft-icon" aria-hidden="true" />
+      <div className="draft-info">
+        <p className="draft-title">{draft.title}</p>
+        <p className="draft-meta">
+          <span className="badge badge-warn">Bản nháp</span>
+          {draft.questions} câu · chưa xuất bản, chỉ bạn thấy
+        </p>
+      </div>
+      <Link className="primary-btn draft-open" to={draft.link}>
+        Xem lại &amp; xuất bản
+        <ArrowRight size={16} weight="bold" aria-hidden="true" />
+      </Link>
+    </div>
+  )
+}
+
 export function AssistantMessage({ result }) {
   const sources = useMemo(() => visibleSources(result), [result])
   const [showSources, setShowSources] = useState(false)
@@ -84,8 +111,12 @@ export function AssistantMessage({ result }) {
   const sourceRefs = useRef([])
   const trace = useMemo(() => buildTrace(result), [result])
   const blocked = result.blocked_by
+  const agent = result.mode === 'exam' // Trợ lý bài kiểm tra: các bước là lớp kiểm tra đầu vào + tool đã gọi
+  const stepsWord = agent ? 'Các bước' : 'Các lớp kiểm tra'
+  const remaining = agent ? result.remaining : null
+  const drafts = agent ? (result.tool_calls || []).filter((c) => c.name === 'create_exam_draft' && c.ok && c.data) : []
 
-  const traceSummary = 'Các lớp kiểm tra: ' + trace.map((s) => `${s.id} ${STATUS[s.status].word}`).join(', ')
+  const traceSummary = `${stepsWord}: ` + trace.map((s) => `${s.id} ${STATUS[s.status].word}`).join(', ')
 
   const openSource = (label) => {
     const i = findSource(label, sources)
@@ -109,6 +140,9 @@ export function AssistantMessage({ result }) {
     a({ href, children }) {
       if (href?.startsWith(CITE_PREFIX)) {
         const label = decodeURIComponent(href.slice(CITE_PREFIX.length))
+        if (agent) {
+          return <span className="cite cite-static"><span className="sr-only">Nguồn: </span>{children}</span>
+        }
         if (findSource(label, sources) < 0) {
           // Không khớp nguồn nào → không làm nút (bấm cũng không có gì), hiện rõ bằng icon + chữ.
           return (
@@ -126,6 +160,8 @@ export function AssistantMessage({ result }) {
           </button>
         )
       }
+      // đường dẫn trong ứng dụng (vd. link đề nháp /exams/12/edit) → chuyển trang tại chỗ, không mở tab mới
+      if (href?.startsWith('/') && !href.startsWith('//')) return <Link to={href}>{children}</Link>
       return <a href={href} target="_blank" rel="noreferrer">{children}</a>
     },
   }
@@ -133,7 +169,7 @@ export function AssistantMessage({ result }) {
   return (
     <div className="msg msg-ai">
       <Avatar />
-      <div className="card">
+      <div className="msg-card">
         <span className="sr-only">Trợ lý trả lời: </span>
         {blocked && (
           <div className={`banner banner-${blocked === 'retrieval' ? 'info' : 'warn'}`}>
@@ -141,7 +177,7 @@ export function AssistantMessage({ result }) {
             {BLOCK_LABEL[blocked] || blocked}
           </div>
         )}
-        {result.input_policy === 'strict' && !blocked && (
+        {result.input_policy === 'strict' && !blocked && !agent && (
           <div className="banner banner-info">
             <Warning size={14} weight="bold" aria-hidden="true" />
             Chế độ nghiêm: chỉ diễn đạt lại đúng nội dung giáo trình
@@ -149,8 +185,9 @@ export function AssistantMessage({ result }) {
         )}
 
         <div className="answer">
-          <Markdown components={components}>{linkCitations(result.answer || '')}</Markdown>
+          <Markdown components={components}>{linkCitations(result.answer || '', agent ? AGENT_CITE_RE : CITE_RE)}</Markdown>
         </div>
+        {drafts.map((c) => <DraftCard key={c.data.exam_id} draft={c.data} />)}
 
         <div className="trace-row">
           <button type="button" className="trace-dots" onClick={() => setShowTrace((v) => !v)}
@@ -164,12 +201,17 @@ export function AssistantMessage({ result }) {
                 </span>
               )
             })}
-            <span className="chev" aria-hidden="true">{showTrace ? 'Ẩn các lớp' : 'Các lớp kiểm tra'}</span>
+            <span className="chev" aria-hidden="true">{showTrace ? `Ẩn ${stepsWord.toLowerCase()}` : stepsWord}</span>
           </button>
           {result.timings?.total_s != null && (
             <span className="meta">
               <span className="sr-only">Thời gian </span>
               {formatSeconds(result.timings.total_s)}
+            </span>
+          )}
+          {remaining != null && remaining <= QUOTA_NOTE_AT && (
+            <span className={`quota-note ${remaining <= 5 ? 'low' : ''}`}>
+              {remaining === 0 ? 'Hết lượt trợ lý hôm nay' : `Còn ${remaining} lượt trợ lý hôm nay`}
             </span>
           )}
           {sources.length > 0 && (
@@ -180,7 +222,7 @@ export function AssistantMessage({ result }) {
         </div>
 
         {showTrace && (
-          <ol className="trace" aria-label="Chi tiết các lớp kiểm tra">
+          <ol className="trace" aria-label={`Chi tiết ${stepsWord.toLowerCase()}`}>
             {trace.map((s) => {
               const { Icon, word } = STATUS[s.status]
               return (
@@ -229,7 +271,10 @@ const STEP_HINTS = {
   retrieve: 'Đang tìm đoạn liên quan trong giáo trình…',
   generate: 'Gemini đang soạn câu trả lời…',
   judge: 'Đang kiểm tra câu trả lời có bám giáo trình không…',
+  agent: 'Trợ lý đang đọc câu hỏi…', // trợ lý bài kiểm tra; khi gọi tool thì step = 'tool' (xem toolHint)
 }
+
+const stepHint = (step, tool) => (step === 'tool' ? toolHint(tool) : STEP_HINTS[step])
 
 function useElapsed(startedAt) {
   const [now, setNow] = useState(() => Date.now())
@@ -240,13 +285,13 @@ function useElapsed(startedAt) {
   return (now - startedAt) / 1000
 }
 
-export function PendingMessage({ startedAt, step }) {
+export function PendingMessage({ startedAt, step, tool }) {
   const elapsed = useElapsed(startedAt)
-  const hint = STEP_HINTS[step] || HINTS[Math.min(HINTS.length - 1, Math.floor(elapsed / 1.6))]
+  const hint = stepHint(step, tool) || HINTS[Math.min(HINTS.length - 1, Math.floor(elapsed / 1.6))]
   return (
     <div className="msg msg-ai">
       <Avatar />
-      <div className="card pending">
+      <div className="msg-card pending">
         {/* Gợi ý + đồng hồ đổi liên tục → ẩn với trình đọc màn hình, chỉ báo 1 câu cố định */}
         <span className="sr-only">Đang soạn câu trả lời, nhấn Esc để dừng.</span>
         <span className="typing" aria-hidden="true"><i /><i /><i /></span>
@@ -259,21 +304,23 @@ export function PendingMessage({ startedAt, step }) {
 
 // Chữ Gemini đang viết, hiện dần. Khi xong, App thay bằng AssistantMessage với câu trả lời cuối
 // (có thể đã được thay bằng câu an toàn nếu không qua bước kiểm tra trích dẫn / giám khảo).
-export function StreamingMessage({ startedAt, step, text }) {
+export function StreamingMessage({ startedAt, step, tool, text }) {
   const elapsed = useElapsed(startedAt)
-  if (!text) return <PendingMessage startedAt={startedAt} step={step} />
+  if (!text) return <PendingMessage startedAt={startedAt} step={step} tool={tool} />
   const checking = step === 'judge'
+  // Trợ lý bài kiểm tra có thể viết vài câu rồi mới gọi tool → báo đang tra gì thay cho "Đang viết…"
+  const status = checking ? STEP_HINTS.judge : step === 'tool' ? toolHint(tool) : 'Đang viết…'
   return (
     <div className="msg msg-ai">
       <Avatar />
-      <div className="card">
+      <div className="msg-card">
         {/* Chữ đổi liên tục → ẩn với trình đọc màn hình; câu trả lời cuối sẽ được đọc khi xong */}
         <span className="sr-only">Đang soạn câu trả lời, nhấn Esc để dừng.</span>
         <div className={`answer ${checking ? '' : 'streaming'}`} aria-hidden="true">
           <Markdown>{text}</Markdown>
         </div>
         <div className="trace-row" aria-hidden="true">
-          <span className="meta">{checking ? STEP_HINTS.judge : 'Đang viết…'} · {elapsed.toFixed(1)} s</span>
+          <span className="meta">{status} · {elapsed.toFixed(1)} s</span>
         </div>
       </div>
     </div>
@@ -284,7 +331,7 @@ export function ErrorMessage({ message, onRetry }) {
   return (
     <div className="msg msg-ai">
       <Avatar error />
-      <div className="card card-err">
+      <div className="msg-card card-err">
         <p><span className="sr-only">Lỗi: </span>{message}</p>
         {onRetry && (
           <button type="button" className="retry-btn" onClick={onRetry}>

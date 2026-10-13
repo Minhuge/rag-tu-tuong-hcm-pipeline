@@ -138,6 +138,7 @@ const FALLBACK = {
   422: 'Dữ liệu gửi lên không hợp lệ.',
   429: 'Bạn thao tác quá nhiều — đợi một lát rồi thử lại.',
   500: 'Máy chủ gặp lỗi hoặc chưa khởi động xong. Thử lại sau ít giây.',
+  501: 'Tính năng này chưa có.',
   502: 'Máy chủ chưa sẵn sàng hoặc lỗi khi gọi Gemini. Thử lại sau ít giây.',
   503: 'Máy chủ đang bận hoặc đang khởi động. Thử lại sau ít giây.',
   504: 'Máy chủ phản hồi quá lâu. Thử lại sau ít giây.',
@@ -176,7 +177,9 @@ export const ask = (question, signal) =>
 export const health = () => request('/health')
 
 // ---------- lịch sử chat (lưu trên máy chủ) ----------
-export const toSummary = (c) => ({ id: c.id, title: c.title, createdAt: c.created_at, updatedAt: c.updated_at })
+export const toSummary = (c) => ({
+  id: c.id, title: c.title, mode: c.mode ?? 'docs', createdAt: c.created_at, updatedAt: c.updated_at,
+})
 
 export const listConversations = async () => (await request('/conversations')).map(toSummary)
 
@@ -190,10 +193,11 @@ export const deleteConversation = (id, { keepalive = false } = {}) =>
  * POST /chat, đọc luồng NDJSON (mỗi dòng một sự kiện) và gọi onEvent cho từng sự kiện:
  * conversation → status → delta… → done | error. Xem api.py để biết đủ các loại sự kiện.
  */
-export async function streamChat({ conversationId, message, retry = false, signal, onEvent }) {
+export async function streamChat({ conversationId, message, retry = false, mode = 'docs', signal, onEvent }) {
   const res = await send('/chat', {
     method: 'POST',
-    body: JSON.stringify({ conversation_id: conversationId ?? null, message, retry }),
+    // mode chỉ có tác dụng khi tạo cuộc trò chuyện mới (conversationId rỗng)
+    body: JSON.stringify({ conversation_id: conversationId ?? null, message, retry, mode }),
     signal,
   })
   if (!res.ok) throw await errorFrom(res)

@@ -52,6 +52,9 @@ def test_every_exam_endpoint_matches_its_schema():
     call(c, "PATCH", f"/exams/{eid}/questions/{essay['id']}", A, json={"explanation": "Gợi ý"})
     tmp = call(c, "POST", f"/exams/{eid}/questions", A, 201, json={"type": "essay", "content": "Xoá", "rubric": "x"})
     call(c, "DELETE", f"/exams/{eid}/questions/{tmp['id']}", A, 204)
+    order = call(c, "PUT", f"/exams/{eid}/questions/order", A, json={"question_ids": [essay["id"], mcq["id"]]})
+    assert [q["id"] for q in order["questions"]] == [essay["id"], mcq["id"]]
+    call(c, "PUT", f"/exams/{eid}/questions/order", A, json={"question_ids": [mcq["id"], essay["id"]]})
     assert call(c, "GET", f"/exams/{eid}/full", A)["questions"][0]["options"][1]["is_correct"] is True
     published = call(c, "POST", f"/exams/{eid}/publish", A)
     mine = call(c, "GET", "/exams/mine", A)

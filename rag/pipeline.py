@@ -44,7 +44,7 @@ from rag.guards import (
     basic_input_check, build_context, build_system_prompt, check_citations, clean_rewrite, format_history,
     input_policy, is_refusal, source_label,
 )
-from rag.search_rerank import EMBED_TIMEOUT, TOP_N, Retriever, qdrant_search, retrieval_guard
+from rag.search_rerank import EMBED_TIMEOUT, TOP_N, Retriever, chapter_filter, qdrant_search, retrieval_guard
 
 load_dotenv()
 
@@ -146,16 +146,50 @@ async def call_gemini(llm: genai.Client, contents: str, config: types.GenerateCo
                 await asyncio.sleep(wait)
 
 
+async def stream_gemini(llm: genai.Client, contents, config: types.GenerateContentConfig):
+    """
+    Như call_gemini nhưng trả về từng chunk ngay khi Gemini viết ra (chunk có chữ hoặc function_call).
+    Chỉ đổi sang model dự phòng khi lỗi xảy ra TRƯỚC chunk đầu tiên; đã đưa ra rồi thì báo lỗi luôn.
+    """
+    models = [GEMINI_MODEL, *GEMINI_FALLBACKS]
+    for i, model in enumerate(models):
+        has_next = i < len(models) - 1
+        started = False
+        try:
+            stream = await llm.aio.models.generate_content_stream(
+                model=model, contents=contents, config=config)
+            async for chunk in stream:
+                if chunk.candidates and chunk.candidates[0].content and chunk.candidates[0].content.parts:
+                    started = True
+                    yield chunk
+            if i:
+                print(f"  [Gemini] đã trả lời bằng model dự phòng {model}")
+            return
+        except genai_errors.ServerError as e:      # 500 / 503 / 504: model quá tải
+            if started or not has_next:
+                raise
+            print(f"  [Gemini {e.code}] {model} quá tải → thử {models[i + 1]}")
+        except genai_errors.ClientError as e:
+            if e.code == 402:
+                raise RuntimeError("Gemini báo hết prepayment credits (402). "
+                                   "Nạp thêm credit tại https://ai.studio/projects.") from e
+            if started or e.code != 429 or not has_next:
+                raise
+            # stream không chờ rồi thử lại như _call: chuyển luôn sang model khác (hạn mức riêng)
+            print(f"  [Gemini 429] {model} hết lượt → thử {models[i + 1]}")
+
+
 class GuardedRAG:
     def __init__(self):
         self.retriever = Retriever()            # Qdrant + Ollama embedding + Qwen3-Reranker
         self.guard = Qwen3Guard()
         self.llm = genai.Client()               # tự đọc GEMINI_API_KEY từ môi trường
 
-        # PyTorch trên GPU Apple (MPS) không an toàn khi 2 luồng cùng chạy model.
-        # Guard và reranker cùng ở GPU → dùng chung 1 khoá; guard ở CPU → không cần khoá.
-        same_gpu = self.guard.device == self.retriever.reranker.device != "cpu"
-        self._gpu_lock = threading.Lock() if same_gpu else None
+        # PyTorch trên GPU Apple (MPS) không an toàn khi 2 luồng cùng chạy model — kể cả CÙNG một model do hai câu hỏi
+        # gửi cùng lúc (crash "failed assertion … MTLCommandBuffer"). Có model nào ở GPU → mọi bước GPU dùng chung 1
+        # khoá. Cả hai ở CPU → không cần khoá.
+        on_gpu = self.guard.device != "cpu" or self.retriever.reranker.device != "cpu"
+        self._gpu_lock = threading.Lock() if on_gpu else None
 
     def _gpu(self):
         return self._gpu_lock if self._gpu_lock else nullcontext()
@@ -176,10 +210,11 @@ class GuardedRAG:
                   f"[1b] raw   : {g.raw!r} → label={g.label} cats={g.categories}")
         return g, time.perf_counter() - t
 
-    def _retrieval_job(self, question: str):
+    def _retrieval_job(self, question: str, query_filter=None):
         t0 = time.perf_counter()
         try:
-            cands = qdrant_search(self.retriever.client, self.retriever.embedder, question)  # không dùng torch
+            cands = qdrant_search(self.retriever.client, self.retriever.embedder, question,  # không dùng torch
+                                  query_filter=query_filter)
         except (httpx.TimeoutException, httpx.ConnectError) as e:   # Ollama treo / chưa chạy
             raise RuntimeError(EMBED_ERROR) from e
         t1 = time.perf_counter()
@@ -194,6 +229,26 @@ class GuardedRAG:
             print("\n".join(lines))
         return ranked, {"embed_qdrant_s": t1 - t0, "rerank_s": time.perf_counter() - t1}
 
+    def search(self, question: str, chapter: int | None = None) -> list[dict]:
+        """Chỉ tìm + rerank, không gọi Gemini (tool search_textbook của trợ lý bài kiểm tra). Đồng bộ: chạy trong thread.
+        chapter: số chương (0 = Mở đầu) → chỉ tìm trong chương đó."""
+        return self._retrieval_job(question, chapter_filter(chapter) if chapter is not None else None)[0]
+
+    async def screen(self, question: str) -> dict:
+        """
+        Chỉ lớp 1a + 1b (cùng luật với hỏi giáo trình) cho câu hỏi đi đường khác — trợ lý bài kiểm tra (Phase 5.6).
+        Trả {"blocked_by": None | "input-basic" | "input-guard", "answer": câu từ chối | None, "guard", "input_policy"}.
+        """
+        if reason := basic_input_check(question):
+            return {"blocked_by": "input-basic", "answer": reason, "guard": None, "input_policy": None}
+        task = asyncio.create_task(asyncio.to_thread(self._guard_job, question))
+        g, _ = await _within(task, "Bước kiểm tra an toàn (Qwen3Guard)")
+        policy = input_policy(g)
+        if policy == "block":
+            return {"blocked_by": "input-guard", "answer": "Yêu cầu không được hỗ trợ.", "guard": asdict(g),
+                    "input_policy": policy}
+        return {"blocked_by": None, "answer": None, "guard": asdict(g), "input_policy": policy}
+
     # ---------- Gemini ----------
     def _cfg(self, system: str, schema=None) -> types.GenerateContentConfig:
         return gemini_config(system, schema)
@@ -202,36 +257,10 @@ class GuardedRAG:
         return await call_gemini(self.llm, contents, config, retries)
 
     async def _stream(self, contents: str, config: types.GenerateContentConfig):
-        """
-        Như _call nhưng trả về từng đoạn chữ ngay khi Gemini viết ra.
-        Chỉ đổi sang model dự phòng khi lỗi xảy ra TRƯỚC đoạn đầu tiên; đã hiện chữ rồi thì báo lỗi luôn.
-        """
-        models = [GEMINI_MODEL, *GEMINI_FALLBACKS]
-        for i, model in enumerate(models):
-            has_next = i < len(models) - 1
-            started = False
-            try:
-                stream = await self.llm.aio.models.generate_content_stream(
-                    model=model, contents=contents, config=config)
-                async for chunk in stream:
-                    if chunk.text:
-                        started = True
-                        yield chunk.text
-                if i:
-                    print(f"  [Gemini] đã trả lời bằng model dự phòng {model}")
-                return
-            except genai_errors.ServerError as e:      # 500 / 503 / 504: model quá tải
-                if started or not has_next:
-                    raise
-                print(f"  [Gemini {e.code}] {model} quá tải → thử {models[i + 1]}")
-            except genai_errors.ClientError as e:
-                if e.code == 402:
-                    raise RuntimeError("Gemini báo hết prepayment credits (402). "
-                                       "Nạp thêm credit tại https://ai.studio/projects.") from e
-                if started or e.code != 429 or not has_next:
-                    raise
-                # stream không chờ rồi thử lại như _call: chuyển luôn sang model khác (hạn mức riêng)
-                print(f"  [Gemini 429] {model} hết lượt → thử {models[i + 1]}")
+        """Như _call nhưng trả về từng đoạn chữ ngay khi Gemini viết ra (xem stream_gemini)."""
+        async for chunk in stream_gemini(self.llm, contents, config):
+            if chunk.text:
+                yield chunk.text
 
     @staticmethod
     def _contents(question: str, ranked: list[dict], history: list[dict] | None) -> str:

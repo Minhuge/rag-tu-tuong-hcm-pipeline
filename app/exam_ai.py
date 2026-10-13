@@ -58,6 +58,14 @@ def check_counts(n_mcq: int, n_essay: int) -> None:
         raise ValueError("Cần ít nhất một câu hỏi")
 
 
+def ai_quota(user_id: int) -> dict:
+    """Lượt tạo đề AI hôm nay + giới hạn số câu — trang tạo đề hiện TRƯỚC khi người dùng bấm (4.4).
+    busy = người này đang có một đề đang tạo (vd. F5 giữa chừng) → tạo thêm sẽ bị 429."""
+    limit = AI_GEN_PER_USER_PER_DAY
+    return {"limit": limit, "remaining": max(limit - exams.ai_exams_today(user_id), 0),
+            "busy": user_id in _generating, "max_mcq": MAX_MCQ, "max_essay": MAX_ESSAY}
+
+
 def to_questions(exam: GeneratedExam) -> list[dict]:
     """Đề Gemini (đã kiểm tra) → tham số của exams.add_question. Trắc nghiệm trước, tự luận sau."""
     mcq = [{"type": "mcq", "content": q.question, "points": MCQ_POINTS, "explanation": q.explanation,

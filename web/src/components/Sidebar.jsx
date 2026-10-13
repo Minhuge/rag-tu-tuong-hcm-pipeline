@@ -1,5 +1,6 @@
 import { Plus, Trash, X } from '@phosphor-icons/react'
 import { useEffect, useRef } from 'react'
+import { modeOf } from '../chatModes.js'
 
 const DAY = 86400000
 
@@ -21,6 +22,18 @@ function groupByDay(conversations) {
     groups.at(-1).items.push(c)
   }
   return groups
+}
+
+/** Tiêu đề trong lịch sử, có icon theo chế độ (Hỏi giáo trình / Trợ lý bài kiểm tra). */
+function ModeTitle({ conversation: c, current }) {
+  const { Icon, sr } = modeOf(c.mode)
+  return (
+    <>
+      <Icon size={15} weight={current ? 'fill' : 'regular'} className={`history-mode mode-${c.mode}`} aria-hidden="true" />
+      {sr && <span className="sr-only">{sr}</span>}
+      {c.title}
+    </>
+  )
 }
 
 /**
@@ -90,9 +103,9 @@ export default function Sidebar({
                           className="history-open"
                           onClick={() => onSelect(c.id)}
                           aria-current={current ? 'page' : undefined}
-                          title={c.title}
+                          title={`${modeOf(c.mode).label} · ${c.title}`}
                         >
-                          <span className="history-title">{c.title}</span>
+                          <span className="history-title"><ModeTitle conversation={c} current={current} /></span>
                           {c.id === pendingId && <span className="history-busy">Đang trả lời…</span>}
                         </button>
                         <button

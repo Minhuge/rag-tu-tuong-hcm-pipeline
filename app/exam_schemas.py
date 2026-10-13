@@ -121,6 +121,14 @@ class Quota(Out):
     remaining: int                 # lượt còn lại hôm nay, sau đề này
 
 
+class AiQuota(Out):
+    limit: int                     # số đề AI tối đa mỗi ngày (giờ Việt Nam)
+    remaining: int                 # còn lại hôm nay
+    busy: bool                     # đang có một đề khác đang tạo
+    max_mcq: int
+    max_essay: int
+
+
 class GenerationInfo(Out):
     chapter: ChapterOut
     requested: RequestedCounts
@@ -151,6 +159,7 @@ class SubmissionOut(Out):
     max_score: float | None
     started_at: int
     deadline: int | None           # hạn nộp (thời gian làm bài / giờ đóng đề); None = không giới hạn
+    remaining_seconds: float | None  # máy chủ tính, chỉ khi đang làm và có hạn → đồng hồ đếm ngược
     submitted_at: int | None
     graded_at: int | None
 

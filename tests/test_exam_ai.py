@@ -286,11 +286,16 @@ def api_with(monkeypatch, qdrant, fake_gemini):
 def test_generate_over_http_then_review_and_publish(api_with):
     """Phase 2 xong khi: tạo đề AI qua API, xem lại, sửa, publish được; người khác không thấy bản nháp."""
     client, llm = api_with([exam_text([mcq("Câu 1?"), mcq("Câu 2?")], [essay()])])
+    limit = exam_ai.AI_GEN_PER_USER_PER_DAY
+    quota = client.get("/exams/generate/quota", headers=bearer(A)).json()       # trang tạo đề hiện trước khi bấm
+    assert quota == {"limit": limit, "remaining": limit, "busy": False,
+                     "max_mcq": exam_ai.MAX_MCQ, "max_essay": exam_ai.MAX_ESSAY}
     res = client.post("/exams/generate", json={"chapter": 3, "n_mcq": 2, "n_essay": 1}, headers=bearer(A))
     assert res.status_code == 201
     body = res.json()
     assert (body["origin"], body["status"], len(body["questions"])) == ("ai", "draft", 3)
-    assert body["generation"]["quota"]["remaining"] == exam_ai.AI_GEN_PER_USER_PER_DAY - 1
+    assert body["generation"]["quota"]["remaining"] == limit - 1
+    assert client.get("/exams/generate/quota", headers=bearer(A)).json()["remaining"] == limit - 1
     assert len(llm.calls) == 2
 
     exam_id = body["id"]
