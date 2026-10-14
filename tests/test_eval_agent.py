@@ -4,6 +4,9 @@ Gemini. Chạy đánh giá thật: python -m scripts.eval_agent.
 
 Chạy:  pytest -q tests/test_eval_agent.py
 """
+import asyncio
+
+import numpy as np
 import pytest
 
 from agent import tools
@@ -81,3 +84,61 @@ def test_write_tool_only_when_asked_and_at_most_once():
     asked = {"must_call": ["create_exam_draft"]}
     assert ev.check(asked, "ok", calls(create)) == []
     assert ev.check(asked, "ok", calls(create, ("create_exam_draft", {"chapter": 1}))) == ["tạo nhiều hơn một đề"]
+
+
+# ---------- chỉ số RAGAS (tool_call_accuracy / tool_call_f1 không gọi Gemini; InScope chỉ thử phần tính điểm) ----------
+def ragas_of(case, tool_calls):
+    record = {"id": case["id"], "run": 1, "answer": "ok", "tool_calls": tool_calls, "error": None}
+    asyncio.run(ev.ragas_scores([case], [record], use_llm=False, concurrency=1))
+    return record["ragas"]
+
+
+def test_tool_call_metrics_reward_the_reference_and_punish_deviations():
+    case = {"id": "x", "question": "?", "reference_tool_calls": [
+        {"name": "list_my_submissions"}, {"name": "get_my_submission", "args": {"submission_id": 1, "question_number": 2}}]}
+    right = calls(("list_my_submissions", {}), ("get_my_submission", {"submission_id": 1, "question_number": 2}))
+    assert ragas_of(case, right) == {"tool_call_accuracy": 1.0, "tool_call_f1": 1.0}
+    wrong_id = calls(("list_my_submissions", {}), ("get_my_submission", {"submission_id": 4, "question_number": 2}))
+    assert ragas_of(case, wrong_id) == {"tool_call_accuracy": 0.75, "tool_call_f1": 0.5}
+    swapped = list(reversed(right))                         # đúng tool, sai thứ tự: accuracy 0, f1 (theo tập) vẫn 1
+    assert ragas_of(case, swapped) == {"tool_call_accuracy": 0.0, "tool_call_f1": 1.0}
+    extra = right + calls(("get_my_exam", {}))
+    assert ragas_of(case, extra)["tool_call_f1"] < 1
+
+
+def test_defaults_are_filled_and_free_text_args_ignored():
+    draft = {"id": "d", "question": "?", "reference_tool_calls": [{"name": "create_exam_draft", "args": {"chapter": 1}}]}
+    assert ragas_of(draft, calls(("create_exam_draft", {"chapter": 1, "n_mcq": 10, "n_essay": 2})))["tool_call_f1"] == 1
+    assert ragas_of(draft, calls(("create_exam_draft", {"chapter": 1, "n_mcq": 5})))["tool_call_f1"] == 0
+    search = {"id": "s", "question": "?", "reference_tool_calls": [{"name": "search_textbook"}]}
+    assert ragas_of(search, calls(("search_textbook", {"query": "bất kỳ"})))["tool_call_accuracy"] == 1
+
+
+def test_no_tool_expected_and_none_called_is_perfect():
+    case = {"id": "n", "question": "?", "reference_tool_calls": []}
+    assert ragas_of(case, []) == {"tool_call_accuracy": 1.0, "tool_call_f1": 1.0}
+    assert ragas_of(case, calls(("list_my_submissions", {}))) == {"tool_call_accuracy": 0.0, "tool_call_f1": 0.0}
+    assert ragas_of({"id": "free", "question": "?"}, calls(("list_my_submissions", {}))) == {}   # không có mẫu: bỏ qua
+
+
+def test_topic_adherence_refusing_everything_is_in_scope():
+    metric = object.__new__(ev.InScope)                    # chỉ thử phần tính điểm, không cần giám khảo
+    metric.mode = "precision"
+    assert metric._compute_score(np.array([False]), np.array([False])) == 1.0        # từ chối câu thời tiết
+    assert metric._compute_score(np.array([True, True]), np.array([True, False])) == pytest.approx(0.5)
+
+
+def test_ragas_messages_keep_turns_tool_calls_and_answer():
+    case = {"conversation": [["user", "Câu 2?"], ["model", "Đề nào?"], ["user", "ôn tập"]]}
+    record = {"answer": "Đáp án B", "tool_calls": [{"name": "list_my_submissions", "args": {}, "ok": False}]}
+    msgs = ev.ragas_messages(case, record, [ev.ToolCall(name="list_my_submissions", args={})])
+    assert [type(m).__name__ for m in msgs] == ["HumanMessage", "AIMessage", "HumanMessage", "AIMessage",
+                                               "ToolMessage", "AIMessage"]
+    assert msgs[4].content == "(tool báo lỗi)" and msgs[-1].content == "Đáp án B"
+
+
+def test_testset_references_use_real_tools_and_every_case_has_a_goal():
+    real = {t.name for t in tools.build_tools(rag=None)}
+    for c in ev.load_cases():
+        assert {r["name"] for r in c.get("reference_tool_calls", [])} <= real, c["id"]
+        assert c.get("expected_outcome"), c["id"]          # câu từ chối mà không có mẫu → giám khảo chấm 0 oan

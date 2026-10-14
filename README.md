@@ -30,10 +30,12 @@ scripts/                Công cụ dòng lệnh (chạy bằng python -m scripts
   search.py             Kiểm thử semantic search thuần (có filter theo chương)
   calibrate.py          Hiệu chỉnh ngưỡng lớp 2 (retrieval guard)
   eval_ragas.py         Đánh giá chất lượng câu trả lời bằng RAGAS
+  ragas_judge.py        Giám khảo Gemini dùng chung cho eval_ragas và eval_agent (cache .ragas_cache/)
   list_models.py        Liệt kê model Gemini mà API key gọi được
   agent_proto.py        Thử trợ lý với Gemini thật: prompt + tool thật trên database tạm, 13 tình huống
   agent_data.py         Dữ liệu mẫu (database tạm) cho agent_proto và eval_agent
   eval_agent.py         Đánh giá trợ lý: data/eval_agent_testset.json × nhiều lần chạy, chấm bằng luật
+                        (+ chỉ số RAGAS: tool_call_accuracy / f1; --ragas thêm topic_adherence, agent_goal_accuracy)
   create_user.py        Tạo tài khoản (vd. quản trị viên đầu tiên)
   migrate_sqlite.py     Chuyển lịch sử chat cũ từ SQLite sang PostgreSQL (đã chạy xong)
 tests/                  pytest: reranker, guardrail, pipeline, database, API, đăng nhập (không tốn quota Gemini)

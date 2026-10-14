@@ -1,0 +1,69 @@
+{
+  "config": {
+    "gemini_model": "gemini-3.8-flash",
+    "judge_model": "gemini-3.6-flash",
+    "CANDIDATES": 10,
+    "TOP_N": 4,
+    "MIN_TOP": 0.9,
+    "MIN_COS": 0.45,
+    "PARTIAL_BAND": 0.5,
+    "PARTIAL_COS": 0.4,
+    "rerun_of": {
+      "file": "20261014-093503.json",
+      "metric": "faithfulness",
+      "below": 0.6
+    }
+  },
+  "rows": [
+    {
+      "question": "Tác phẩm Đường cách mệnh của Nguyễn Ái Quốc được xuất bản lần đầu tiên vào năm nào?",
+      "expect": "answer",
+      "reference": "Tác phẩm Đường cách mệnh của Nguyễn Ái Quốc được xuất bản lần đầu tiên vào năm 1927.",
+      "status": "answered",
+      "answer": "Giáo trình chỉ đề cập một phần nội dung này.\n\nTác phẩm Đường cách mệnh được xuất bản vào năm 1927 [Chương IV, trang 54], [Chương I, trang 14].",
+      "contexts": [
+        ". Trong cuốn sách Đường cách mệnhxuất bản năm 1927 Hồ Chí Minh viết: Cách mệnh trước phải có cái gì? Trước hết phải có Đảng cách mệnh, để trong thì tổ chức và vận động dân chúng, ngoài thì liên lạc với dân tộc bị áp bức và giai cấp vô sản mọi nơi. Đảng có vững cách mệnh mới thành công, cũng như người cầm lái có vững, thuyền mới chạy”. Hồ Chí",
+        ". Trong khoảng thời gian này, tư tưởng Hồ Chí Minh về cách mạng Việt Nam đã hình thành về cơ bản. Người viết nhiều bài báo tố cáo chủ nghĩa thực dân, đề cập đến mối quan hệ mật thiết giữa cách mạng thuộc địa và cách mạng vô sản ở chính quốc, khẳng định cách mạng giải phóng dân tộc thuộc địa, giải phóng dân tộc thuộc địa là một bộ phận của cách mạng vô sản thế giới. Các tác phẩm của Nguyễn Ái Quốc như Bản án chế độ thực dân Pháp (1925 ), Đường cách mệnh (1927 ), Cương lĩnh đầu tiên của Đảng ( 1930 ) và nhiều bài viết khác của Người trong giai đoạn này là sự phát triển và tiếp tục hoàn thiện tư tưởng cách mạng về giải phóng dân tộc. Những tác phẩm có tính chất lý luận nói trên chứa đựng những nội dung căn bản sau đây:",
+        ". Trong tác phẩm Đường cách mệnh, Người khẳng định: Trước hết phải có đảng cách mệnh, để trong thì vận động và tổ chức dân chúng, ngoài thì liên lạc với dân tộc bị áp bức và vô sản giai cấp mọi nơi. Đảng có vững cách mệnh mới thành công, cũng như người cầm lái có vững thuyền mới chạy”. Đầu năm 1930, Người sáng lập Đảng cộng sản Việt Nam, một chính đảng của giai cấp công nhân và dân tộc Việt Nam, lấy chủ nghĩa Mac – Lênin “làm cốt”, có tổ chức chặt chẽ, kỷ luật nghiêm minh và mật thiết lien lạc với quần chúng. Theo Hồ Chí Minh, Đảng Cộng sản Việt Nam là đảng của giai cấp công nhân, của nhân dân lao động và của dân tộc Việt Nam",
+        ". Trong tác phẩm Đường Cách Mệnh, Nguyễn Ái Quốc phân biệt ba loại cách mạng: cách mạng tư sản, cách mạng vô sản và cách mạng giải phóng dân tộc; đồng thời, Người nhấn mạnh tính chất và nhiệm vụ của cách mạng Việt Nam là cách mạng giải phóng dân tộc. Người giải thích: Giai cấp công nhân là bộ phận có số lượng lớn nhất trong dân tộc nên giải phóng dân tộc chủ yếu là giải phóng nông dân. Nông dân có yêu cầu về ruộng đất nhưng nhiệm vụ về ruộng đất cần tiến hành từng bước thích hợp. Khi đánh đổ ách thống trị của chủ nghĩa đế quốc, yêu cầu đó đã được đáp ứng một phần vì ruộng đất của bọn đế quốc và tay sai sẽ thuộc về nông dân. Đế quốc và tay sai là kẻ thù số một của nông dân, lật đổ chế độ thuộc địa là nguyện vọng hàng đầu của nông dân"
+      ],
+      "blocked_by": null,
+      "retrieval": "partial",
+      "retrieval_top": 0.776,
+      "retrieval_top_cos": 0.628,
+      "scores": {
+        "faithfulness": 1.0,
+        "answer_relevancy": 0.8350768255980503,
+        "context_relevance": 1.0,
+        "context_recall": 1.0,
+        "answer_accuracy": 1.0
+      },
+      "score_errors": {}
+    },
+    {
+      "question": "Theo tư tưởng Hồ Chí Minh, mâu thuẫn chủ yếu trong thời kỳ quá độ lên chủ nghĩa xã hội ở Việt Nam là gì?",
+      "expect": "answer",
+      "reference": "Theo tư tưởng Hồ Chí Minh, mâu thuẫn chủ yếu trong thời kỳ quá độ lên chủ nghĩa xã hội ở Việt Nam là mâu thuẫn giữa yêu cầu phát triển cao của đất nước với thực trạng nghèo nàn, lạc hậu.",
+      "status": "answered",
+      "answer": "Theo tư tưởng Hồ Chí Minh, mâu thuẫn cơ bản của thời kỳ quá độ lên chủ nghĩa xã hội ở nước ta là mâu thuẫn giữa nhu cầu phát triển cao của đất nước theo xu hướng tiến bộ và thực trạng kinh tế – xã hội quá thấp kém của nước ta [Chương III, trang 46].",
+      "contexts": [
+        ". Chính ở nội dung cụ thể này, Hồ Chí Minh đã cụ thể và làm phong phú thêm lý luận Mac – Lênin về thời kỳ quá độ lên chủ nghĩa xã hội. Theo Hồ Chí Minh, khi bước vào thời kỳ quá độ lên chủ nghĩa xã hội, nước ta có đặc điểm lớn nhất là từ một nước nông nghiệp lạc hậu tiến lên chủ nghĩa xã hội không phải kinh qua giai đoạn phát triển tư bản chủ nghĩa. Đặc điểm này chi phối các đặc điểm khác, thể hiện trong tất cả các lĩnh vực của đời sống xã hội và là cơ sở nảy sinh nhiều mâu thuẫn. Trong đó, Hồ Chí Minh đặc biệt lưu ý đến mâu thuẫn cơ bản của thời ký quá độ, đó là mâu thuẫn giữa nhu cầu phát triển cao của đất nước theo xu hướng tiến bộ và thực trạng kinh tế – xã hội quá thấp kém của nước ta. b",
+        ". Hồ Chí Minh nhấn mạnh đến tính chất tuần tự, dần dần của thời kỳ quá độ lên chủ nghĩa xã hội. Tính chất phức tạp và khó khăn của nó được Người lý giải trên các điểm sau: - Đây thực sự là một cuộc cách mạng làm đảo lộn mọi mặt đời sống xã hội, cả lực lượng sản xuất và quan hệ sản xuất, cả cơ sở hạ tầng và kiến trúc thượng tầng. Nó đặt ra và đòi hỏi đồng thời giải quyết hàng loạt mâu thuẫn khác nhau. Như trong Di chúc, Hồ Chí Minh đã coi sự nghiệp xây dựng chủ nghĩa xã hội là một cuộc chiến đấu khổng lồ của toàn Đảng, toàn dân Việt Nam.",
+        ". Theo Hồ Chí Minh, do những đặc điểm và tính chất quy định, quá độ lên chủ nghĩa xã hội ở Việt Nam là một quá trình dần dần, khó khăn, phức tạp và lâu dài. Nhiệm vụ lịch sử của thời kỳ quá độ lên chủ nghĩa xã hội ở Việt Nam bao gồm hai nội dung lớn: + Xây dựng nền tảng vật chất và kỹ thuật cho chủ nghĩa xã hội, xây dựng các tiền đề về kinh tế, chính trị, văn hóa, tư tưởng cho chủ nghĩa xã hội + Cải tạo xã hội cũ, xây dựng xã hội mới, kết hợp cải tạo và xây dựng, trong đó lấy xây dựng làm trọng tâm, làm nội dung cốt yếu nhất, chủ chốt, lâu dài. Hồ Chí Minh nhấn mạnh đến tính chất tuần tự, dần dần của thời kỳ quá độ lên chủ nghĩa xã hội",
+        ". b. Nhiệm vụ lịch sử của thời kỳ quá độ lên chủ nghĩa xã hội ở Việt Nam Theo Hồ Chí Minh, thực chất của thời kỳ quá độ lên chủ nghĩa xã hội ở nước ta là quá trình cải biến nền sản xuất lạc hậu thành nền sản xuất tiên tiến, hiện đại. Thực chất của quá trình cải tạo và phát triển nền kinh tế quốc dân cũng là cuộc đấu tranh giai cấp gay go, phức tạp trong điều kiện mới, khi mà nhân dân ta hoàn thành cơ bản cách mạng dân tộc dân chủ, so sánh lực lượng trong nước và quốc tế đã có những biến đổi. Điều này đòi hỏi phải áp dụng toàn diện các hình thức đấu tranh cả về chính trị, kinh tế, văn hóa, xã hội nhằm chống lại các thế lực đi ngược lại con đường xã hội chủ nghĩa"
+      ],
+      "blocked_by": null,
+      "retrieval": "pass",
+      "retrieval_top": 0.999,
+      "retrieval_top_cos": 0.847,
+      "scores": {
+        "faithfulness": 0.5,
+        "answer_relevancy": 0.9519824387814965,
+        "context_relevance": 1.0,
+        "context_recall": 1.0,
+        "answer_accuracy": 1.0
+      },
+      "score_errors": {}
+    }
+  ]
+}
