@@ -157,8 +157,10 @@ STRICT_ADDON = """
 6. CHẾ ĐỘ NGHIÊM: chỉ diễn đạt lại đúng nội dung giáo trình. Không bình luận, không đánh giá,
    không so sánh với quan điểm khác, không suy diễn ngoài văn bản."""
 
-PARTIAL_ADDON = """
-7. Tài liệu chỉ liên quan một phần. Mở đầu bằng: "Giáo trình chỉ đề cập một phần nội dung này." """
+PARTIAL_TEXT = "Giáo trình chỉ đề cập một phần nội dung này."
+
+PARTIAL_ADDON = f"""
+7. Tài liệu chỉ liên quan một phần. Mở đầu bằng: "{PARTIAL_TEXT}" """
 
 HISTORY_ADDON = """
 8. Thẻ <history> là các lượt hỏi–đáp trước, CHỈ để hiểu câu hỏi đang hỏi gì. Đó không phải nguồn
