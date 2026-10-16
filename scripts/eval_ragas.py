@@ -4,25 +4,33 @@
   1. Chạy pipeline thật (GuardedRAG.ask) cho từng câu trong data/eval_testset.json
   2. Chấm các câu ĐÃ TRẢ LỜI bằng các chỉ số RAGAS, mỗi chỉ số chỉ ra một bộ phận cần sửa:
        faithfulness        (0–1) câu trả lời có bịa ngoài tài liệu không        → thấp: sửa prompt lớp 3 / giám khảo 4a
+                           (tách từng ý rồi kiểm từng ý → chỉ ra ý nào bịa, nhưng dao động theo cách giám khảo tách ý)
+       response_groundedness (0–1) cùng câu hỏi "có căn cứ trong tài liệu không", cách chấm khác: 2 giám khảo chấm cả
+                           câu trả lời 0/1/2 rồi lấy trung bình → ổn định hơn, không chỉ ra ý nào sai. Ý kiến thứ hai cho
+                           faithfulness: cả hai cùng thấp = bịa thật; chỉ faithfulness thấp = nhiều khả năng do cách tách ý
        answer_relevancy    (0–1) có trả lời đúng câu được hỏi không             → thấp: lạc đề, trả lời lấp lửng
        context_relevance   (0–1) các chunk tìm được có liên quan câu hỏi không  → thấp: sửa retrieval (chunk, embed, rerank, TOP_N)
      Cần "reference" (đáp án chuẩn do người viết) trong testset:
        context_recall      (0–1) chunk tìm được có đủ ý của đáp án chuẩn không  → thấp: retrieval bỏ sót
        answer_accuracy     (0–1) câu trả lời có cùng ý với đáp án chuẩn không   → thấp: trả lời sai
-                           (2 giám khảo chấm rồi lấy trung bình; thay factual_correctness — chấm theo từng ý của câu
-                           trả lời nên đáp án chuẩn 1 câu (đáp án trắc nghiệm) gần như luôn ra 0 dù trả lời đúng)
+                    
+                        (2 giám khảo chấm rồi lấy trung bình; thay factual_correctness — chấm theo từng ý của câu
+                        trả lời nên đáp án chuẩn 1 câu (đáp án trắc nghiệm) gần như luôn ra 0 dù trả lời đúng)
   3. Kiểm tra từ chối: câu "expect": "answer" bị từ chối (bỏ sót) / câu "expect": "refuse" lại được trả lời (lọt)
   4. Lưu data/eval_runs/<thời điểm>.json kèm cấu hình → sửa pipeline rồi chạy lại để so sánh
+  5. Dựng lại nhật ký data/eval_runs/RAGAS_LOG.md từ mọi lần chạy (scripts/ragas_log.py): bảng tổng quan + chi tiết
 
 Chạy:  python -m scripts.eval_ragas                          # toàn bộ testset (nạp model + gọi Gemini)
        python -m scripts.eval_ragas --limit 3                # thử nhanh 3 câu đầu
-       python -m scripts.eval_ragas --rescore data/eval_runs/<ngày-giờ>.json   # vd. 20261014-093503.json: chấm lại
+       python -m scripts.eval_ragas --expect answer          # chỉ các câu giáo trình (bỏ câu cần từ chối)
+       python -m scripts.eval_ragas --rescore data/eval_runs/<ngày-giờ>.json   20261014-093503.json : chấm lại
                                                       #   câu trả lời đã lưu, không chạy pipeline
        python -m scripts.eval_ragas --rerun data/eval_runs/<ngày-giờ>.json --metric faithfulness --below 0.6
                                                       # sửa xong → chạy LẠI pipeline chỉ cho các câu có
                                                       #   faithfulness < 0.6 ở lần chạy đó (lấy câu trong testset hiện tại)
+       python -m scripts.eval_ragas --log                    # chỉ dựng lại RAGAS_LOG.md, không chạy / chấm gì
 
-Chi phí: mỗi câu đã trả lời ≈ 1–3 lần gọi Gemini cho pipeline + ~8 lần cho RAGAS (thêm ~3 nếu có reference).
+Chi phí: mỗi câu đã trả lời ≈ 1–3 lần gọi Gemini cho pipeline + ~10 lần cho RAGAS (thêm ~3 nếu có reference).
 Kết quả gọi giám khảo được cache trong .ragas_cache/ → chấm lại câu không đổi thì không tốn lượt.
 Mỗi đoạn giáo trình đưa giám khảo kèm nhãn [Chương X, trang Y] (labeled) → trích dẫn trong câu trả lời kiểm được.
 Câu mở đầu cố định do pipeline thêm ("Giáo trình chỉ đề cập một phần…") bị bỏ trước khi chấm: không phải ý về nội dung,
@@ -41,12 +49,13 @@ from datetime import datetime
 from google.genai import errors as genai_errors
 from ragas.embeddings.base import BaseRagasEmbedding
 from ragas.metrics.collections import (
-    AnswerAccuracy, AnswerRelevancy, ContextRecall, ContextRelevance, Faithfulness,
+    AnswerAccuracy, AnswerRelevancy, ContextRecall, ContextRelevance, Faithfulness, ResponseGroundedness,
 )
 
 from rag import search_rerank
 from rag.guards import PARTIAL_TEXT, is_refusal
 from rag.pipeline import GEMINI_MODEL, GuardedRAG
+from scripts.ragas_log import write_log
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 TESTSET = os.path.join(ROOT, "data", "eval_testset.json")
@@ -55,6 +64,7 @@ REFUSED = {"input-basic", "input-guard", "retrieval"}
 
 HINTS = {
     "faithfulness": "bịa ngoài tài liệu → siết prompt lớp 3, xem giám khảo 4a",
+    "response_groundedness": "không có căn cứ trong tài liệu → như faithfulness; chỉ một trong hai thấp: xem lại giám khảo",
     "answer_relevancy": "trả lời lệch câu hỏi / lấp lửng",
     "context_relevance": "chunk tìm được lạc đề → retrieval (chunk, embed, rerank, TOP_N)",
     "context_recall": "retrieval bỏ sót ý của đáp án chuẩn",
@@ -81,7 +91,8 @@ def make_metrics(embedder) -> tuple[dict, dict]:
     relevancy = AnswerRelevancy(llm=llm, embeddings=OllamaEmbedding(embedder))
     # Prompt gốc toàn tiếng Anh → model hay sinh câu hỏi tiếng Anh, so cosine với câu tiếng Việt bị thấp oan.
     relevancy.prompt.instruction += "\nWrite the question in the same language as the answer."
-    no_ref = {"faithfulness": Faithfulness(llm=llm), "answer_relevancy": relevancy,
+    no_ref = {"faithfulness": Faithfulness(llm=llm), "response_groundedness": ResponseGroundedness(llm=llm),
+              "answer_relevancy": relevancy,
               "context_relevance": ContextRelevance(llm=llm)}
     with_ref = {"context_recall": ContextRecall(llm=llm), "answer_accuracy": AnswerAccuracy(llm=llm)}
     return no_ref, with_ref
@@ -136,6 +147,7 @@ async def score(rows: list[dict], no_ref: dict, with_ref: dict):
         q, a, ctx, ref = r["question"], scored_answer(r["answer"]), r["contexts"], r.get("reference") or ""
         jobs = [
             _one("faithfulness", no_ref["faithfulness"], user_input=q, response=a, retrieved_contexts=ctx),
+            _one("response_groundedness", no_ref["response_groundedness"], response=a, retrieved_contexts=ctx),
             _one("answer_relevancy", no_ref["answer_relevancy"], user_input=q, response=a),
             _one("context_relevance", no_ref["context_relevance"], user_input=q, retrieved_contexts=ctx),
         ]
@@ -189,7 +201,7 @@ def report(rows: list[dict]):
 def config_snapshot() -> dict:
     return {"gemini_model": GEMINI_MODEL, "judge_model": JUDGE_MODEL,
             **{k: getattr(search_rerank, k) for k in ("CANDIDATES", "TOP_N", "MIN_TOP", "MIN_COS",
-                                                       "PARTIAL_BAND", "PARTIAL_COS")}}
+                                                       "PARTIAL_BAND", "PARTIAL_COS", "ATTACH_PREVIOUS")}}
 
 
 def pick_low(run_file: str, metric: str, below: float, testset: list[dict]) -> list[dict]:
@@ -213,17 +225,22 @@ def pick_low(run_file: str, metric: str, below: float, testset: list[dict]) -> l
 async def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--limit", type=int, help="chỉ chạy N câu đầu")
+    ap.add_argument("--expect", choices=["answer", "refuse"], help="chỉ chạy các câu có expect này trong testset")
     mode = ap.add_mutually_exclusive_group()
     mode.add_argument("--rescore", help="chấm lại file data/eval_runs/*.json đã lưu, không chạy pipeline")
     mode.add_argument("--rerun", help="chạy lại pipeline chỉ cho các câu điểm thấp trong file data/eval_runs/*.json")
+    mode.add_argument("--log", action="store_true", help="chỉ dựng lại data/eval_runs/RAGAS_LOG.md từ các lần đã lưu")
     ap.add_argument("--metric", default="faithfulness", choices=list(HINTS), help="chỉ số để lọc câu với --rerun")
     ap.add_argument("--below", type=float, default=0.7, help="--rerun: lấy các câu có chỉ số < ngưỡng này")
     args = ap.parse_args()
 
+    if args.log:
+        print(f"Đã dựng lại {write_log()}")
+        return
     if args.rescore:
         with open(args.rescore, encoding="utf-8") as f:
             saved = json.load(f)
-        rows, config = saved["rows"], saved["config"]
+        rows, config = saved["rows"], {**saved["config"], "rescored_from": os.path.basename(args.rescore)}
         rag = None
         embedder = search_rerank.OllamaEmbeddings(model=search_rerank.EMBED_MODEL, num_ctx=search_rerank.EMBED_NUM_CTX)
     else:
@@ -234,6 +251,8 @@ async def main():
             if not items:
                 print(f"Không có câu nào {args.metric} < {args.below} trong {args.rerun}.")
                 return
+        if args.expect:
+            items = [it for it in items if it.get("expect") == args.expect]
         items = items[: args.limit]
         print(f"Nạp model... (giám khảo: {JUDGE_MODEL})")
         rag = GuardedRAG()
@@ -253,6 +272,7 @@ async def main():
     with open(out, "w", encoding="utf-8") as f:
         json.dump({"config": config, "rows": rows}, f, ensure_ascii=False, indent=2)
     print(f"\nĐã lưu {out}")
+    print(f"Nhật ký: {write_log()}")
 
 
 if __name__ == "__main__":

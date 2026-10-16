@@ -44,7 +44,9 @@ from rag.guards import (
     basic_input_check, build_context, build_system_prompt, check_citations, clean_rewrite, format_history,
     input_policy, is_refusal, source_label,
 )
-from rag.search_rerank import EMBED_TIMEOUT, TOP_N, Retriever, chapter_filter, qdrant_search, retrieval_guard
+from rag.search_rerank import (
+    ATTACH_PREVIOUS, EMBED_TIMEOUT, TOP_N, Retriever, attach_previous, chapter_filter, qdrant_search, retrieval_guard,
+)
 
 load_dotenv()
 
@@ -220,11 +222,14 @@ class GuardedRAG:
         t1 = time.perf_counter()
         with self._gpu():
             ranked = self.retriever.reranker.rerank(question, cands, top_n=TOP_N)
+        if ATTACH_PREVIOUS:      # "Đây là…" → ghép chunk liền trước (Qdrant, không dùng GPU)
+            ranked = attach_previous(self.retriever.client, ranked)
         if DEBUG_GUARDS:
             lines = [f"[2] search_q: {question!r} ({len(cands)} chunk từ Qdrant → giữ {len(ranked)})"]
             for i, it in enumerate(ranked, 1):
                 md = it["metadata"]
-                lines.append(f"  #{i} rerank={it['rerank_score']:.3f} cos={it['cosine']:.3f} | {source_label(md)}\n"
+                note = f" (ghép cho {it['context_for']})" if it.get("context_for") else ""
+                lines.append(f"  #{i} rerank={it['rerank_score']:.3f} cos={it['cosine']:.3f} | {source_label(md)}{note}\n"
                              f"     {md.get('text', '')[:200]!r}")
             print("\n".join(lines))
         return ranked, {"embed_qdrant_s": t1 - t0, "rerank_s": time.perf_counter() - t1}
