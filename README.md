@@ -31,6 +31,7 @@ scripts/                Công cụ dòng lệnh (chạy bằng python -m scripts
   calibrate.py          Hiệu chỉnh ngưỡng lớp 2 (retrieval guard)
   eval_ragas.py         Đánh giá chất lượng câu trả lời bằng RAGAS
   ragas_judge.py        Giám khảo Gemini dùng chung cho eval_ragas và eval_agent (cache .ragas_cache/)
+  ragas_log.py          Nhật ký kết quả eval_ragas → data/eval_runs/RAGAS_LOG.md (tự dựng lại sau mỗi lần chạy)
   list_models.py        Liệt kê model Gemini mà API key gọi được
   agent_proto.py        Thử trợ lý với Gemini thật: prompt + tool thật trên database tạm, 13 tình huống
   agent_data.py         Dữ liệu mẫu (database tạm) cho agent_proto và eval_agent
@@ -83,6 +84,7 @@ GEMINI_MODEL=gemini-3.8-flash        # xem tên hợp lệ bằng: python -m scr
 GEMINI_THINKING=low                  # none nếu model không hỗ trợ thinking_level
 GUARD_DEVICE=cuda                    # cpu: guard không chiếm VRAM nhưng chậm hơn (~7s/câu)
 EMBED_NUM_CTX=1024                   # context Ollama lúc truy vấn (nhỏ → tốn ít VRAM)
+ATTACH_PREVIOUS=0                    # 1 = đoạn mở đầu "Đây là…", "Do đó…" → ghép thêm đoạn liền trước (tạm tắt)
 AI_GEN_PER_USER_PER_DAY=5            # số đề AI mỗi người được tạo mỗi ngày (giờ Việt Nam)
 AI_GRADE_PER_USER_PER_DAY=20         # số câu tự luận AI chấm mỗi ngày cho mỗi người làm bài
 SWEEP_INTERVAL=1800                  # giây giữa hai lần quét chấm bù (câu hết lượt, job bị mất)

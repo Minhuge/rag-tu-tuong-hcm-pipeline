@@ -3,6 +3,7 @@ Retrieve (Qdrant) → Rerank (Qwen3-Reranker) → Retrieval guardrail.
 
   1. Qdrant lấy CANDIDATES chunk (lấy rộng, ưu tiên không bỏ sót).
   2. Qwen3-Reranker chấm lại, giữ TOP_N chunk tốt nhất.
+  2b. Chunk mở đầu bằng từ trỏ về đoạn trước ("Đây là…", "Do đó…") → ghép thêm chunk liền trước (attach_previous).
   3. Retrieval guardrail dựa trên chunk đứng đầu sau rerank — cần CẢ P(yes) VÀ cosine của nó:
        pass    → đủ bằng chứng, cho LLM trả lời
        partial → chỉ có bằng chứng một phần, trả lời kèm lưu ý
@@ -19,7 +20,9 @@ Payload mỗi point cần có key "text" (và nên có "chunk_id", "chapter", "c
 Chạy:  python -m rag.search_rerank
 """
 import os
+import re
 import time
+import unicodedata
 from functools import lru_cache
 
 from dotenv import load_dotenv
@@ -108,6 +111,53 @@ def qdrant_search(client: QdrantClient, embedder, question: str,
         {"id": p.payload.get("chunk_id", str(p.id)), "score": p.score, "metadata": p.payload}
         for p in points
     ]
+
+
+# ---------- ghép chunk liền trước ----------
+# Chunk mở đầu bằng từ trỏ về đoạn trước thì ý được nói tới nằm ở cuối chunk liền trước, mà chunk_overlap (100 ký tự)
+# không mang sang được khi câu đó dài. Vd. chunk_156 ". Đây là một luận điểm sáng tạo, có giá trị lý luận và thực tiễn
+# to lớn…" khớp câu hỏi nên được tìm thấy, nhưng "đây" là câu cuối chunk_155 "…cách mạng giải phóng dân tộc ở thuộc địa
+# có thể giành thắng lợi trước cách mạng vô sản ở chính quốc" → không ghép thì Gemini không biết luận điểm là gì.
+ATTACH_PREVIOUS = os.getenv("ATTACH_PREVIOUS", "0") == "1"     # tạm tắt (16/10): thử chunk_overlap 300 thay thế
+BACKREF_RE = re.compile(r"(Đây|Đó là|Điều này|Điều đó|Như vậy|Do đó|Do vậy|Vì vậy|Vì thế|Bởi vậy|Chính vì)\b")
+
+
+def refers_back(text: str) -> bool:
+    """Đoạn mở đầu bằng từ trỏ về đoạn trước. Chuẩn hoá NFC trước: text từ PDF có chỗ lưu dấu tách rời (chữ + dấu
+    kết hợp) → so thẳng với "Đây" không khớp."""
+    head = unicodedata.normalize("NFC", text[:40]).lstrip(" .…\n\t")
+    return bool(BACKREF_RE.match(head))
+
+
+def previous_chunk_id(chunk_id: str) -> str | None:
+    """"chunk_156" → "chunk_155" (giữ số chữ số); chunk đầu tiên / id lạ → None."""
+    m = re.fullmatch(r"(.*?)(\d+)", chunk_id)
+    if not m or int(m.group(2)) <= 1:
+        return None
+    return f"{m.group(1)}{int(m.group(2)) - 1:0{len(m.group(2))}d}"
+
+
+def fetch_chunk(client: QdrantClient, chunk_id: str) -> dict | None:
+    points, _ = client.scroll(COLLECTION, limit=1, with_payload=True, scroll_filter=models.Filter(
+        must=[models.FieldCondition(key="chunk_id", match=models.MatchValue(value=chunk_id))]))
+    return points[0].payload if points else None
+
+
+def attach_previous(client: QdrantClient, ranked: list[dict]) -> list[dict]:
+    """Chèn chunk liền trước (cùng chương, chưa có trong danh sách) ngay TRƯỚC mỗi chunk trỏ về đoạn trước. Chunk chèn
+    thêm mang điểm của chunk cần nó → retrieval guard và các chỗ lọc theo điểm cho kết quả như cũ; "context_for" = id
+    chunk cần nó. Chỉ hỏi Qdrant khi có chunk trỏ về đoạn trước."""
+    have = {str(it["id"]) for it in ranked}
+    out = []
+    for it in ranked:
+        prev_id = previous_chunk_id(str(it["id"])) if refers_back(it["metadata"].get("text", "")) else None
+        if prev_id and prev_id not in have:
+            prev = fetch_chunk(client, prev_id)
+            if prev and prev.get("chapter") == it["metadata"].get("chapter"):
+                out.append({**it, "id": prev_id, "metadata": prev, "context_for": it["id"]})
+                have.add(prev_id)
+        out.append(it)
+    return out
 
 
 def retrieval_guard(ranked: list[dict], min_top: float = MIN_TOP, min_cos: float = MIN_COS,
