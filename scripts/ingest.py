@@ -3,6 +3,8 @@ import re
 from langchain_community.document_loaders import PyPDFLoader
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 
+from rag.chunking import roman_to_int
+
 NOISE_PATTERNS = [
     r"www\.onthisv\.com",
     r"Downloaded by .*?gmail\.com\)?",
@@ -58,15 +60,6 @@ def chunk_documents(docs, chunk_size=800, chunk_overlap=300):
 # Tiêu đề chương trong giáo trình luôn VIẾT HOA ("CHƯƠNG III TƯ TƯỞNG…") → so khớp phân biệt hoa/thường,
 # để câu nhắc lại trong bài ("như chương II đã trình bày") không bị nhận nhầm là bắt đầu chương mới.
 CHAPTER_HEADING_RE = re.compile(r"CH[UƯ]ƠNG\s+(MỞ\s*ĐẦU|[IVX]+)\b")
-ROMAN = {"I": 1, "V": 5, "X": 10}
-
-
-def roman_to_int(roman: str) -> int:
-    total = 0
-    for ch, nxt in zip(roman, roman[1:] + " "):
-        value = ROMAN[ch]
-        total += -value if nxt in ROMAN and ROMAN[nxt] > value else value
-    return total
 
 
 def extract_chapter(text: str) -> tuple[str, int] | None:

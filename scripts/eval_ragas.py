@@ -163,8 +163,7 @@ async def score(rows: list[dict], no_ref: dict, with_ref: dict):
                 r["score_errors"][name] = err
         shown = "  ".join(f"{k}={v:.2f}" if v is not None else f"{k}=lỗi" for k, v in r["scores"].items())
         print(f"[{i}/{len(todo)}] {shown}  | {q[:50]}")
-
-
+    
 # ---------- báo cáo ----------
 def report(rows: list[dict]):
     print("\n" + "=" * 90)

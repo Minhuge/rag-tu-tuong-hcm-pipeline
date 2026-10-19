@@ -1,0 +1,543 @@
+{
+  "config": {
+    "gemini_model": "gemini-3.6-flash",
+    "judge_model": "deepseek-v4-pro",
+    "CANDIDATES": 10,
+    "TOP_N": 4,
+    "MIN_TOP": 0.9,
+    "MIN_COS": 0.45,
+    "PARTIAL_BAND": 0.5,
+    "PARTIAL_COS": 0.4,
+    "ATTACH_PREVIOUS": false
+  },
+  "rows": [
+    {
+      "id": 1,
+      "level": "easy",
+      "type": "factual",
+      "question": "Hồ Chí Minh sinh ngày, tháng, năm nào và trong gia đình như thế nào?",
+      "expect": "answer",
+      "reference": "Hồ Chí Minh sinh ngày 19 tháng 5 năm 1890 trong một gia đình nhà nho yêu nước, gần gũi với nhân dân; thân sinh là cụ phó bảng Nguyễn Sinh Sắc.",
+      "status": "answered",
+      "answer": "Hồ Chí Minh sinh ngày 19 tháng 5 năm 1890 trong một gia đình nhà nho yêu nước, gần gũi với nhân dân [Chương I, trang 12]. Thân sinh của Người là Cụ Phó bảng Nguyễn Sinh Sắc, một nhà nho cấp tiến, có lòng yêu nước, thương dân sâu sắc [Chương I, trang 12].",
+      "contexts": [
+        "[Chương I, trang 12] . Thời kỳ trước năm 1911: hình thành tư tưởng yêu nước và chí hướng cứu nước Hồ Chí Minh sinh ngày 19 tháng 5 năm 1890 trong một gia đình nhà nho yêu nước, gần gũi với nhân dân. Cụ phó bảng Nguyễn Sinh Sắc, thân sinh của Người, là một nhà nho cấp tiến, có lòng yêu nước, thương dân sâu sắc. Tấm gương lao động cấn cù, ý chí kiên cường vượt qua gian khổ để đạt được mục tiêu, đặc biệt là tư tưởng thân dân, lấy dân làm hậu thuẫn cho các cải cách chính trị - xã hội của Cụ Phó bảng đã có ảnh hưởng sâu sắc đối với quá trình hình thành nhân cách của Nguyễn Tất Thành. Sau này, những kiến thức học được từ người cha, những tư tưởng mới của thời đại đã được Hồ Chí Minh nâng lên thành tư tưởng cốt lõi trong đường lối chính trị của mình",
+        "[Chương I, trang 12] . Tóm lại, tư tưởng Hồ Chí Minh là sản phẩm tổng hòa cuả những điều kiện khách quan và chủ quan, của truyền thống văn hóa dân tộc và tinh hoa văn hóa nhân loại. Từ thực tiễn dân tộc và thời đại được Hồ Chí Minh tổng kết, chuyển hóa sắc sảo, tinh tế với một phương pháp khoa học, biện chứng, tư tưởng Hồ Chí Minh đã trở thành tư tưởng Việt Nam hiện đại. II. QUÁ TRÌNH HÌNH THÀNH VÀ PHÁT TRIỂN TƯ TƯỞNG HỒ CHÍ MINH 1. Thời kỳ trước năm 1911: hình thành tư tưởng yêu nước và chí hướng cứu nước Hồ Chí Minh sinh ngày 19 tháng 5 năm 1890 trong một gia đình nhà nho yêu nước, gần gũi với nhân dân. Cụ phó bảng Nguyễn Sinh Sắc, thân sinh của Người, là một nhà nho cấp tiến, có lòng yêu nước, thương dân sâu sắc",
+        "[Chương V, trang 83] . Hồ Chí Minh sinh ra trong một dân tộc có truyền thống đấu tranh kiên cường vì độc lập, tự chủ nên đã nhìn thấy sức mạnh của chủ nghĩa dân tộc, nguồn động lực to lớn của nhân dân Việt Nam trong dựng nước và giữ nước. Sau khi tìm thấy con đường cứu nước và trước những đòi hỏi khách quan của cách mạng, Hồ Chí Minh đã sớm đưa ra quan điểm về Mặt trận dân tộc thống nhất – biểuhiện cụ thể của khối đại đoàn kết dân tộc với một hệ thống những quan điểm khá hoàn chỉnh về công tác mặt trận, Được Đảng Cộng sản Việt Nam tiếp thu và đưa vào thực tiễn ở Việt Nam, Kết hợp đoàn kết dân tộc với đoàn kết quốc tế, tạo thành sức mạnh tổng hợp, làm nên mọi thắng lợi của cách mạng Việt Nam",
+        "[Chương Mở đầu, trang 4] Hồ Chí Minh là người cộng sản đầu tiên của Việt Nam; người sáng lập, giáo dục, rèn luyện và là lãnh tụ của Đảng Cộng sản Việt Nam. Bản thân Hồ Chí Minh là người tìm kiếm, lựa chọn con đường, vạch ra đường lối cách mạng đúng đắn cho dân tộc và lãnh đạo sự nghiệp cách mạng Việt Nam theo mục tiêu độc lập dân tộc gắn liền với chủ nghĩa xã hội. Trong quan hệ với môn học Đường lối cách mạng của Đảng Cộng Sản Việt Nam, tư tưởng Hồ Chí Minh là một bộ phận tư tưởng của Đảng, nhưng với tư cách là bộ phận nền tảng tư tưởng, kim chỉ nam hành động của Đảng, là cơ sở khoa học cùng với chủ nghĩa Mac – Lênin để xây dựng đường lối, chiến lược, sách lược cách mạng đúng đắn. Như vậy, môn học tư tưởng Hồ Chí Minh gắn bó chặt chẽ với môn học Đường lối cách mạng của Đảng Cộng sản Việt Nam"
+      ],
+      "blocked_by": null,
+      "retrieval": "pass",
+      "retrieval_top": 0.999,
+      "retrieval_top_cos": 0.652,
+      "scores": {
+        "faithfulness": 1.0,
+        "response_groundedness": 1.0,
+        "answer_relevancy": 0.8114423592766763,
+        "context_relevance": 1.0,
+        "context_recall": null,
+        "answer_accuracy": 0.75
+      },
+      "score_errors": {
+        "context_recall": "InstructorRetryException: <!DOCTYPE html PUBLIC \"-//W3C//DTD XHTML 1.0 Transitional//EN\" \"http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd\">\n<html>\n<!-- FileName: index.html\n     Language: [en]\n-->\n<!--Head-->\n<head>\n  "
+      }
+    },
+    {
+      "id": 2,
+      "level": "easy",
+      "type": "factual",
+      "question": "Năm nào Nguyễn Ái Quốc gửi Bản yêu sách của nhân dân An Nam tới hội nghị Versailles và bản yêu sách đòi điều gì?",
+      "expect": "answer",
+      "reference": "Năm 1919, thay mặt những người yêu nước Việt Nam tại Pháp, Nguyễn Ái Quốc gửi Bản yêu sách của nhân dân An Nam tới hội nghị Versailles, đòi chính phủ Pháp thừa nhận các quyền tự do, dân chủ và bình đẳng của nhân dân Việt Nam.",
+      "status": "answered",
+      "answer": "Năm 1919, Nguyễn Ái Quốc gửi Bản yêu sách của nhân dân An Nam tới Hội nghị Versailles [Chương VI, trang 89], [Chương I, trang 14], [Chương II, trang 23].\n\nBản yêu sách đòi các điều sau:\n* Đòi chính phủ Pháp thừa nhận các quyền tự do, dân chủ và bình đẳng của nhân dân Việt Nam (bản yêu sách gồm 8 điểm) [Chương I, trang 14], [Chương II, trang 23].\n* Cải cách nền pháp lý ở Đông Dương bằng cách cho người bản xứ cũng được hưởng những bảo đảm về mặt pháp luật như người Châu Âu [Chương VI, trang 89].\n* Xoá bỏ hoàn toàn các toà án đặc biệt dùng làm công cụ để khủng bố và áp bức bộ phận trung thực nhất trong nhân dân An Nam [Chương VI, trang 89].\n* Thay thế chế độ ra các sắc lệnh bằng chế độ ra các đạo luật [Chương VI, trang 89].",
+      "contexts": [
+        "[Chương VI, trang 89] . Con đường quá độ lên chủ nghĩa xã hội và đi đến chủ nghĩa cộng sản là con đường mà Hồ Chí Minh và Đảng ta đã xác định, cũng là sự nghiệp của chính Nhà nước ta. III. XÂY DỰNG NHÀ NƯỚC CÓ HIỆU LỰC PHÁP LÝ MẠNH MẼ Hồ Chí Minh đã sớm thấy được tầm quan trọng của hiến pháp và pháp luật trong quản lý xã hội. đieuf này thể hiện trong bản Yêu sách của nhân dân An Nam do Người ký tên là Nguyễn Ái Quốc gửi đến hội nghị Versaille năm 1919. Bản yêu sách đó đưa ra yêu cầu: “ cải cách nền pháp lý ở Đông Dương bằng cách cho người bản xứ cũng được hưởng những bảo đảm về mặt pháp luật như người Châu Âu; xoá bỏ hoàn toàn các toà án đặc biệt dùng làm công cụ để khủng bố và áp bức bộ phận trung thực nhất trong nhân dân An Nam; “thay thế chế độ ra các sắc lệnh bằng chế độ ra các đạo luật”",
+        "[Chương I, trang 14] quyền lợi chung. Có thể xem đây là biểu hiện đầu tiên của ý thức về sự đoàn kết quốc tế giữa các dân tộc thuộc địa nhằm thoát khỏi ách thống trị của chủ nghĩa đế quốc. Với lòng yêu nước nồng nàn, Hồ Chí Minh kiên trì chịu đựng mọi khó khăn, gian khổ. Người chú ý xem xét tình hình các nước, suy nghĩ về những điều mắt thấy tai nghe, hăng hái học tập, tham gia các cuộc diễn thuyết của nhiều nhà chính trị và triết học. Năm 1919, thay mặt những người yêu nước Việt Nam tại Pháp, Nguyễn Ái Quốc gửi Bản yêu sách của nhân dân An Nam tới hội nghị Versaille đòi chính phủ Pháp thừa nhận các quyền tự do, dân chủ và bình đẳng của nhân dân Việt Nam. Bản yêu sách đã vạch trần tội ác của thực dân Pháp, làm cho nhân dân thế giới và nhân dân Pháp phải chú ý tới tình hình Việt Nam và Đông Dương",
+        "[Chương II, trang 23] . - Nội dung của độc lập dân tộc Độc lập, tự do là khát vọng lớn nhất của các dân tộc thuộc địa. Hồ Chí Minh nói: “Tự do cho đồng bào tôi, độc lập cho tổ quốc tôi, đấy là tất cả những điều tôi muốn; đấy là tất cả những điều tôi hiểu”. Năm 1919, vận dụng nguyên tắc dân tộc tự quyết đã được các đồng minh thắng trận trong chiến tranh thế giới thứ nhất long trọng thừa nhận, thay mặt những người Việt Nam yêu nước, Nguyễn Ái Quốc gửi tới hội nghị Versaille bản yêu sách gồm 8 điểm, đòi các quyền tự do, dân chủ cho nhân dân Việt Nam. Đầu năm 1930, Nguyễn Ái Quốc soạn thảo Cương lĩnh chính trị đầu tiên của Đảng, một cương lĩnh giải phóng dân tộc đúng đắn và sáng tạo, có tư tưởng cốt lõi là độc lập, tự do cho dân tộc",
+        "[Chương I, trang 14] . Bản yêu sách đã vạch trần tội ác của thực dân Pháp, làm cho nhân dân thế giới và nhân dân Pháp phải chú ý tới tình hình Việt Nam và Đông Dương. Cuộc hành trình qua năm châu bốn biển đã không chỉ hình thành ở Hồ Chí Minh tình cảm và ý thức đoàn kết giữa các dân tộc bị áp bức, mà còn rèn luyện Người trở thành một người công nhân có đầy đủ phẩm chất, tâm lý của giai cấp vô sản. Thực tiễn trong gần 10 năm đi tìm đường cứu nước, nhất là khi đọc Sơ thảo lần thứ nhất những luận cương về vấn đề dân tộc và vấn đề thuộc địa của Lênin Người đã “cảm động, phấn khởi, sáng tỏ, tin tưởng…vui mừng đến phát khóc…” Luận cương của Lênin đã giải đáp cho Nguyễn Ái Quốc con đường giành độc lập cho dân tộc và tự do cho đồng bào, đáp ứng những tình cảm, suy nghĩ, hoài bão được ấp ủ bấy lâu nay ở Người"
+      ],
+      "blocked_by": null,
+      "retrieval": "pass",
+      "retrieval_top": 0.998,
+      "retrieval_top_cos": 0.604,
+      "scores": {
+        "faithfulness": null,
+        "response_groundedness": 1.0,
+        "answer_relevancy": 0.9661562342123351,
+        "context_relevance": 1.0,
+        "context_recall": null,
+        "answer_accuracy": 0.75
+      },
+      "score_errors": {
+        "faithfulness": "InstructorRetryException: <!DOCTYPE html PUBLIC \"-//W3C//DTD XHTML 1.0 Transitional//EN\" \"http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd\">\n<html>\n<!-- FileName: index.html\n     Language: [en]\n-->\n<!--Head-->\n<head>\n  ",
+        "context_recall": "InstructorRetryException: <!DOCTYPE html PUBLIC \"-//W3C//DTD XHTML 1.0 Transitional//EN\" \"http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd\">\n<html>\n<!-- FileName: index.html\n     Language: [en]\n-->\n<!--Head-->\n<head>\n  "
+      }
+    },
+    {
+      "id": 3,
+      "level": "easy",
+      "type": "yes_no",
+      "question": "Theo Hiến pháp năm 1946, những việc quan hệ đến vận mệnh quốc gia có được đưa ra toàn dân phúc quyết không?",
+      "expect": "answer",
+      "reference": "Có. Hiến pháp năm 1946 nêu rõ tất cả quyền bính trong nước là của toàn thể nhân dân Việt Nam, và những việc quan hệ đến vận mệnh quốc gia sẽ đưa ra toàn dân phúc quyết.",
+      "status": "answered",
+      "answer": "Theo Hiến pháp năm 1946, những việc quan hệ đến vận mệnh quốc gia sẽ được đưa ra toàn dân phúc quyết [Chương VI, trang 86].",
+      "contexts": [
+        "[Chương VI, trang 86] Chẳng hạn, Hiến pháp năm 1946 nêu rõ: tất cả quyền bính trong nước đều là của toàn thể nhân dân Việt Nam, không phân biệt nòi giống, gái trai, giàu nghèo, giai cấp, tôn giáo; những việc quan hệ đến vận mệnh quốc gia sẽ đưa ra toàn dân phúc quyết. Nhân dân có quyền làm chủ về chính trị, kinh tế, văn hoá – xã hội, bầu ra quốc hội – cơ quan quyền lực nhà nước cao nhất thể hiện quyền tối cao của nhân dân. Nhân dân lao động làm chủ nhà nước thì dẫn đến một hệ quả là nhân dân có quyền kiểm soát nhà nước, cử tri bầu ra các đại biểu, uỷ quyền cho các đại biểu đó bàn và quyết định những vấn đề quốc kế dân sinh. Đây thuộc về chế độ dân chủ đại diện bên cạnh chế độ dân chủ trực tiếp",
+        "[Chương VI, trang 85] . Đó là dân chủ, bình đẳng trong các quan hệ quốc tế, là nguyên tắc ứng xử trong các quan hệ quốc tế của Nhà nước kiểu mới ở Việt Nam. Quan điểm xây dựng nhà nước của Hồ Chí Minh không những kế thừa mà còn phát triển học thuyết Mac – Lênin về nhà nước cách mạng. Hiểu một cách tổng quát nhất về quan điểm nhà nước của dân, do dân, vì dân, chúng ta thấy trong di sản tư tưởng Hồ Chí Minh những nội dung sau đây: 1. Nhà nước của dân Quan điểm nhất quán của Hồ Chí Minh là xác lập tất cả mọi quyền lực trong nhà nước và trong xã hội đều thuộc về nhân dân. Quan điểm này của Hồ Chí Minh được thể hiện trong các bản hiến pháp do Người lãnh đạo soạn thảo: Hiến pháp năm 1946 và Hiến pháp năm 1959.",
+        "[Chương VI, trang 90] . Có được một nhà nước hợp hiến, thể hiện quyền lực tối cao của nhân dân như vậy thì nước ta mới có cơ sở pháp lý vững chắc để làm việc với quân Đồng Minh, mới có một quan hệ quốc tế bình đẳng, mới thiết lập được một cơ chế quyền lực hợp pháp theo đúng thông lệ một nhà nước pháp quyền hiện đại. Cuộc tổng tuyển cử được tiến hành thắng lợi ngày 6 – – 1946 với chế độ phổ thông đầu phiếu, trực tiếp và bỏ phiếu kín. Và, lần đầu tiên trong lịch sử hàng nghìn năm của dân tộc Việt Nam cũng như lần đầu tiên ở Đông Nam Á, tất cả mọi người dân từ 18 tuổi trở lên, không phân biệt nam, nữ, giàu nghèo, dân tộc, đảng phái, tôn giáo…đều đi bỏ phiếu bầu những đại biểu của mình tham gia Quốc Hội",
+        "[Chương VI, trang 90] . Và, lần đầu tiên trong lịch sử hàng nghìn năm của dân tộc Việt Nam cũng như lần đầu tiên ở Đông Nam Á, tất cả mọi người dân từ 18 tuổi trở lên, không phân biệt nam, nữ, giàu nghèo, dân tộc, đảng phái, tôn giáo…đều đi bỏ phiếu bầu những đại biểu của mình tham gia Quốc Hội. Ngày 2 – – 1946, Quốc hội khoá I nước Việt Nam Dân chủ Cộng hoà đã họp phiên đầu tiên, lập ra các tổ chức, bộ máy và các chức vụ chính thức của Nhà nước. Hồ Chí Minh được bầu làm chủ tịch chính phủ liên hiệp đầu tiên. Đây chính là chính phủ có đầy đủ tư cách pháp lý để giải quyết một cách có hiệu quả những vấn đề đối nội và đối ngoại ơ nước ta. 2"
+      ],
+      "blocked_by": null,
+      "retrieval": "pass",
+      "retrieval_top": 0.999,
+      "retrieval_top_cos": 0.741,
+      "scores": {
+        "faithfulness": 1.0,
+        "response_groundedness": 1.0,
+        "answer_relevancy": 0.8705730247842816,
+        "context_relevance": 1.0,
+        "context_recall": null,
+        "answer_accuracy": 1.0
+      },
+      "score_errors": {
+        "context_recall": "InstructorRetryException: <!DOCTYPE html PUBLIC \"-//W3C//DTD XHTML 1.0 Transitional//EN\" \"http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd\">\n<html>\n<!-- FileName: index.html\n     Language: [en]\n-->\n<!--Head-->\n<head>\n  "
+      }
+    },
+    {
+      "id": 4,
+      "level": "easy",
+      "type": "yes_no",
+      "question": "Có phải Nguyễn Tất Thành từ chối con đường Đông du vì đã hiểu rõ bản chất của đế quốc Nhật không?",
+      "expect": "answer",
+      "reference": "Không. Theo giáo trình, Người từ chối Đông du không phải vì đã hiểu bản chất của đế quốc Nhật, mà chỉ cảm thấy rằng không thể dựa vào nước ngoài để giải phóng Tổ quốc.",
+      "status": "answered",
+      "answer": "Không phải. Nguyễn Tất Thành từ chối Đông du không phải vì đã hiểu bản chất của đế quốc Nhật, mà chỉ cảm thấy rằng không thể dựa vào nước ngoài để giải phóng tổ quốc [Chương I, trang 13].",
+      "contexts": [
+        "[Chương I, trang 13] . Quê hương, đất nước cũng đặt niềm tin lớn ở Anh trên bước đường tìm đến trào lưu mới của thời đại. Phát huy truyền thống yêu nước bất khuất của dân tộc, truyền thống tốt đẹp của gia đình, quê hương, với sự nhạy cảm đặc biệt về chính trị, Hồ Chí Minh đã sớm nhận ra hạn chế của những người đi trước. Người nhận ra rằng không thể cứu nước theo con đường của Phan Bội Châu, Phan Chu Trinh, Hoàng Hoa Thám….Người từ chối Đông du không phải vì đã hiểu bản chất của đế quốc Nhật, mà chỉ cảm thấy rằng: không thể dựa vào nước ngoài để giải phóng tổ quốc. “Điều mà chủ tịch Hồ Chí Minh sớm nhận thức được và nó dẫn Người đi đúng hướng là: nguồn gốc những đau khổ và áp bức dân tộc là ở ngay tại “chính quốc”, ở nước đế quốc đang thống trị dân tộc mình”",
+        "[Chương I, trang 13] . “Điều mà chủ tịch Hồ Chí Minh sớm nhận thức được và nó dẫn Người đi đúng hướng là: nguồn gốc những đau khổ và áp bức dân tộc là ở ngay tại “chính quốc”, ở nước đế quốc đang thống trị dân tộc mình”. Cùng với việc phê phán hành động cầu viện Nhật Bản chẳng khác gì “đưa hổ cửa trước, rước beo cửa sau”, tư tưởng “ỷ Pháp cầu tiến bộ” chẳng qua chỉ là việc “cầu xin Pháp rủ lòng thương”, Nguyễn Ái Quốc đã tụ định ra cho mình một hướng đi mới: phải tìm hiểu cho rõ bản chất của những từ Tự do, Bình đẳng, Bác ái của nước Cộng hòa Pháp, phải đi ra nước ngoài, xem nước Pháp và các nước khác. Sau khi xem xét họ làm thế nào, sẽ trở về giúp đồng bào mình. 2. Thời kỳ – 1920: tìm thấy con đường cứu nước, giải phóng dân tộc Năm 1911, Nguyễn Tất Thành rời tổ quốc sang Phương Tây tìm đường cứu nước",
+        "[Chương I, trang 13] . Sau khi xem xét họ làm thế nào, sẽ trở về giúp đồng bào mình. 2. Thời kỳ – 1920: tìm thấy con đường cứu nước, giải phóng dân tộc Năm 1911, Nguyễn Tất Thành rời tổ quốc sang Phương Tây tìm đường cứu nước. Việc Hồ Chí Minh ra nước ngoài xuất phát từ ý thức dân tộc, từ hoài bão cứu nước. Qua cuộc hành trình đến nhiều nước thuộc địa, phụ thuộc, tư bản, đế quốc, Người đã xúc động trước cảnh khổ cực, bị áp bức của những người dân lao động. Người nhận thấy ở đâu nhân dân cũng mong muốn thoát khỏi ách áp bức, bóc lột. Nhờ những bài học từ buổi thiếu niên về lý tưởng “bốn bể đều là anh em” và “năm châu họp làm một nhà”, Nguyễn Tất Thành không chỉ đau với nổi đau của dân tộc mình, Người còn xót xa trước nỗi đau vong nô của các dân tộc khác",
+        "[Chương I, trang 9] . Chính sức mạnh của chủ nghĩa yêu nước đã thúc giục Nguyễn Tất Thành quyết chí ra đi tìm đường cứu nước, tìm kiếm những gì hữu ích cho cuộc đấu tranh giải phóng dân tộc. Chủ nghĩa yêu nước sẽ biến thành lực lượng vật chất thực sự khi nó ăn sâu vào tiềm thức, vào ý chí và hành động của mỗi con người. Chính từ thực tiễn đó, Hồ Chí Minh đã đúc kết chân lý: “dân ta có một lòng nồng nàn yêu nước. Đó là một truyền thống quý báu của ta. Từ xưa đến nay, mỗi khi tổ quốc bị xâm lăng, thì tinh thần ấy lại sôi nổi, nó kết thành một làn sóng vô cùng mạnh mẽ, to lớn, nó lướt qua mọi sự nguy hiểm, khó khăn, nó nhấn chìm tất cả bè lũ cướp nước và bán nước”"
+      ],
+      "blocked_by": null,
+      "retrieval": "pass",
+      "retrieval_top": 0.999,
+      "retrieval_top_cos": 0.541,
+      "scores": {
+        "faithfulness": 1.0,
+        "response_groundedness": 1.0,
+        "answer_relevancy": 0.9760306981665406,
+        "context_relevance": 1.0,
+        "context_recall": null,
+        "answer_accuracy": 1.0
+      },
+      "score_errors": {
+        "context_recall": "InstructorRetryException: <!DOCTYPE html PUBLIC \"-//W3C//DTD XHTML 1.0 Transitional//EN\" \"http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd\">\n<html>\n<!-- FileName: index.html\n     Language: [en]\n-->\n<!--Head-->\n<head>\n  "
+      }
+    },
+    {
+      "id": 5,
+      "level": "easy",
+      "type": "out_of_domain",
+      "question": "Cho tôi công thức nấu phở bò ngon chuẩn vị Hà Nội.",
+      "expect": "refuse",
+      "reference": "",
+      "status": "refused",
+      "answer": "Giáo trình không đề cập nội dung này.",
+      "contexts": [],
+      "blocked_by": "retrieval",
+      "retrieval": "refuse",
+      "retrieval_top": 0.003,
+      "retrieval_top_cos": 0.235
+    },
+    {
+      "id": 6,
+      "level": "medium",
+      "type": "not_in_corpus",
+      "question": "Năm 1911, Nguyễn Tất Thành rời Bến Nhà Rồng trên con tàu tên là gì?",
+      "expect": "refuse",
+      "reference": "Nguyễn Tất Thành rời Bến Nhà Rồng trên tàu Amiral Latouche-Tréville (giáo trình chỉ nêu năm 1911 Người sang phương Tây, không nêu tên tàu).",
+      "status": "refused",
+      "answer": "Giáo trình không đề cập nội dung này.",
+      "contexts": [],
+      "blocked_by": null,
+      "retrieval": "pass",
+      "retrieval_top": 0.928,
+      "retrieval_top_cos": 0.586
+    },
+    {
+      "id": 7,
+      "level": "medium",
+      "type": "multi_hop",
+      "question": "Trong tác phẩm mà Nguyễn Ái Quốc khẳng định 'cách mệnh trước hết phải có đảng cách mệnh', tác phẩm đó xuất bản năm nào và Người ví vai trò của Đảng như thế nào?",
+      "expect": "answer",
+      "reference": "Đó là tác phẩm Đường cách mệnh, xuất bản năm 1927. Người viết: trước hết phải có đảng cách mệnh để trong thì vận động và tổ chức dân chúng, ngoài thì liên lạc với dân tộc bị áp bức và vô sản giai cấp mọi nơi; Đảng có vững cách mệnh mới thành công, cũng như người cầm lái có vững thuyền mới chạy.",
+      "status": "answered",
+      "answer": "Tác phẩm *Đường cách mệnh* được xuất bản năm 1927 [Chương IV, trang 54]. \n\nTrong tác phẩm này, Hồ Chí Minh ví vai trò của Đảng \"cũng như người cầm lái có vững thuyền mới chạy\", nhằm mục đích \"trong thì tổ chức và vận động dân chúng, ngoài thì liên lạc với dân tộc bị áp bức và giai cấp vô sản mọi nơi\" [Chương II, trang 30], [Chương IV, trang 54].",
+      "contexts": [
+        "[Chương II, trang 30] . Nhưng muốn làm cách mệnh, “trước hết phải làm cho dân giác ngộ…phải giảng giải lý luận và chủ nghĩa cho dân hiểu”. “Cách mệnh phải hiểu phong triều thế giới, phải bày sách lược cho dân…vậy nên sức cách mệnh phải tập trung, muốn tập trung phải có đảng cách mệnh”. Trong tác phẩm Đường cách mệnh, Người khẳng định: Trước hết phải có đảng cách mệnh, để trong thì vận động và tổ chức dân chúng, ngoài thì liên lạc với dân tộc bị áp bức và vô sản giai cấp mọi nơi. Đảng có vững cách mệnh mới thành công, cũng như người cầm lái có vững thuyền mới chạy”. Đầu năm 1930, Người sáng lập Đảng cộng sản Việt Nam, một chính đảng của giai cấp công nhân và dân tộc Việt Nam, lấy chủ nghĩa Mac – Lênin “làm cốt”, có tổ chức chặt chẽ, kỷ luật nghiêm minh và mật thiết lien lạc với quần chúng",
+        "[Chương IV, trang 54] . 2. Vai trò của Đảng cộng sản Việt Nam Sức mạnh to lớn của nhân dân chỉ phát huy khi được tập hợp, đoàn kết và được lãnh đạo bởi một tổ chức chính trị là Đảng cộng sản Việt Nam. Hồ Chí MInh khẳng định: “lực lượng của giai cấp công nhân và nhân dân lao động là rất to lớn, là vô cùng, vô tận. Nhưng lực lượng ấy cần có Đảng lãnh đạo mới chắc chắn thắng lợi”, giai cấp mà không có Đảng lãnh đạo thì không làm cách mạng được. Trong cuốn sách Đường cách mệnhxuất bản năm 1927 Hồ Chí Minh viết: Cách mệnh trước phải có cái gì? Trước hết phải có Đảng cách mệnh, để trong thì tổ chức và vận động dân chúng, ngoài thì liên lạc với dân tộc bị áp bức và giai cấp vô sản mọi nơi. Đảng có vững cách mệnh mới thành công, cũng như người cầm lái có vững, thuyền mới chạy”. Hồ Chí",
+        "[Chương I, trang 14] . Người viết nhiều bài báo tố cáo chủ nghĩa thực dân, đề cập đến mối quan hệ mật thiết giữa cách mạng thuộc địa và cách mạng vô sản ở chính quốc, khẳng định cách mạng giải phóng dân tộc thuộc địa, giải phóng dân tộc thuộc địa là một bộ phận của cách mạng vô sản thế giới. Các tác phẩm của Nguyễn Ái Quốc như Bản án chế độ thực dân Pháp (1925 ), Đường cách mệnh (1927 ), Cương lĩnh đầu tiên của Đảng ( 1930 ) và nhiều bài viết khác của Người trong giai đoạn này là sự phát triển và tiếp tục hoàn thiện tư tưởng cách mạng về giải phóng dân tộc. Những tác phẩm có tính chất lý luận nói trên chứa đựng những nội dung căn bản sau đây:",
+        "[Chương IV, trang 56] . Từ lý tưởng cao cả ấy, Hồ Chí Minh thấy cần phải có một đảng cộng sản để lãnh đạo phong trào cách mạng, thực hiện mục tiêu nói trên. Chính vì vậy, từ những năm 1920 trở đi, Người tích cực chuẩn bị cả ba mặt: chính trị, tư tưởng và tổ chức để tiến tới thành lập đảng. Tới năm 1930, Đảng cộng sản Việt Nam ra đời, đánh dấu một trang mới trong lịch sử dân tộc ta. Trong Đường cách mệnh Hồ Chí Minh đã khẳng định vị trí, vai trò quan trọng của đảng cách mạng – nhân tố đầu tiên, quyết định sự thắng lợi của cách mạng. Thấu hiểu bài học lịch sử về sức mạnh của quần chúng, lại được soi rọi dưới ánh sáng của chủ nghĩa Mac – Lênin, Người chỉ rõ: công nông là gốc cách mạng, nhưng “trước phải làm cho dân giác ngộ”"
+      ],
+      "blocked_by": null,
+      "retrieval": "pass",
+      "retrieval_top": 0.999,
+      "retrieval_top_cos": 0.744,
+      "scores": {
+        "faithfulness": 1.0,
+        "response_groundedness": 1.0,
+        "answer_relevancy": 0.5390012565923082,
+        "context_relevance": 1.0,
+        "context_recall": null,
+        "answer_accuracy": 1.0
+      },
+      "score_errors": {
+        "context_recall": "InstructorRetryException: <!DOCTYPE html PUBLIC \"-//W3C//DTD XHTML 1.0 Transitional//EN\" \"http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd\">\n<html>\n<!-- FileName: index.html\n     Language: [en]\n-->\n<!--Head-->\n<head>\n  "
+      }
+    },
+    {
+      "id": 8,
+      "level": "medium",
+      "type": "multi_hop",
+      "question": "Nguyễn Ái Quốc trở về Tổ quốc vào ngày nào sau bao nhiêu năm hoạt động ở nước ngoài, và từ đó suy ra Người rời Tổ quốc năm nào?",
+      "expect": "answer",
+      "reference": "Ngày 28-1-1941, sau 30 năm hoạt động ở nước ngoài, Nguyễn Ái Quốc trở về Tổ quốc; Người rời Tổ quốc sang phương Tây tìm đường cứu nước năm 1911.",
+      "status": "answered",
+      "answer": "- Nguyễn Ái Quốc trở về Tổ quốc vào ngày 28-1-1941 [Chương I, trang 16].\n- Người trở về sau 30 năm hoạt động ở nước ngoài [Chương I, trang 16].\n- Từ đó suy ra (và theo tài liệu), Nguyễn Tất Thành (Nguyễn Ái Quốc) rời Tổ quốc vào năm 1911 [Chương I, trang 13].",
+      "contexts": [
+        "[Chương I, trang 16] . Được Quốc tế Cộng sản chấp thuận, Nguyễn Ái Quốc từ Matxcơva về Trung Quốc (tháng 10 – ). Tại đây, Người đã có những quan điểm chỉ đạo sát hợp gửi cho các đồng chí lãnh đạo trong nước. Ngày 28 --1941, sau 30 năm hoạt động ở nước ngoài, Nguyễn Ái Quốc trở về tổ quốc. Tại Hội nghị Trung ương lần thứ VIII, dưới sự chủ trì của Nguyễn Ái Quốc, Ban Chấp hành Trung ương Đảng Cộng sản Đông Dương đã hoàn chỉnh việc chuyển hướng chiến lược của cách mạng Việt Nam. Những quan điểm và đường lối đúng đắn, sáng tạo theo tư tưởng Hồ chí Minh được đưa ra và thông qua trong Hội nghị này có ý nghĩa quyết định chiều hướng phát triển của cách mạng giải phóng dân tộc ở nước ta, dẫn đến thắng lợi của Cách mạng Tháng Tám năm 1945",
+        "[Chương I, trang 16] . Trước khi về nước, trong thời gian còn hoạt động ở nước ngoài, lãnh tụ nguyễn Ái Quốc vẫn luôn luôn theo dõi tình hình trong nước, kịp thời có những chỉ đạo để cách mạng Việt Nam tiếp tục tiến lên. Người viết 8 điểm xác định đường lối, chủ trương cho cách mạng Đông Dương trong thời kỳ – 1939. Khi tình hình thế giới có những biến động mới, Người đã chủ động đề nghị Quốc tế Cộng sản cho về nước hoạt động. Người yêu cầu “đừng để tôi sống quá lâu trong tình trạng không hoạt động và giống như là sống ở bên cạnh, ở bên ngoài của Đảng”. Được Quốc tế Cộng sản chấp thuận, Nguyễn Ái Quốc từ Matxcơva về Trung Quốc (tháng 10 – ). Tại đây, Người đã có những quan điểm chỉ đạo sát hợp gửi cho các đồng chí lãnh đạo trong nước",
+        "[Chương I, trang 13] . Sau khi xem xét họ làm thế nào, sẽ trở về giúp đồng bào mình. 2. Thời kỳ – 1920: tìm thấy con đường cứu nước, giải phóng dân tộc Năm 1911, Nguyễn Tất Thành rời tổ quốc sang Phương Tây tìm đường cứu nước. Việc Hồ Chí Minh ra nước ngoài xuất phát từ ý thức dân tộc, từ hoài bão cứu nước. Qua cuộc hành trình đến nhiều nước thuộc địa, phụ thuộc, tư bản, đế quốc, Người đã xúc động trước cảnh khổ cực, bị áp bức của những người dân lao động. Người nhận thấy ở đâu nhân dân cũng mong muốn thoát khỏi ách áp bức, bóc lột. Nhờ những bài học từ buổi thiếu niên về lý tưởng “bốn bể đều là anh em” và “năm châu họp làm một nhà”, Nguyễn Tất Thành không chỉ đau với nổi đau của dân tộc mình, Người còn xót xa trước nỗi đau vong nô của các dân tộc khác",
+        "[Chương I, trang 14] . Việc xác định con đường đúng đắn để giải phóng dân tộc là công lao to lớn đầu tiên của Hồ Chí Minh, trong thực tế, Người đã “gắn phong trào cách mạng Việt Nam với phong trào công nhân quốc tế, đưa nhân dân ta đi theo con đường mà chính Người đã trải qua, từ chủ nghĩa yêu nước đến chủ nghĩa Mac – Lênin. Đó là con đường giải phóng duy nhất mà cách mạng Tháng Mười Nga đã mở ra cho nhân dân lao động và tất cả các dân tộc bị áp bức trên toàn thế giới”. 3. Thời kỳ – 1930: hình thành cơ bản tư tưởng về cách mạng Việt Nam Trong giai đoạn từ 1921 đến 1930, Nguyễn Ái Quốc có những hoạt động thực tiễn và hoạt động lý luận hết sức phong phú, sôi nổi trên địa bàn nước Pháp (1921 – 1923), Liên Xô (1923 – ), Trung Quốc (1924 – 1927), Thái Lan (1928 – )"
+      ],
+      "blocked_by": null,
+      "retrieval": "pass",
+      "retrieval_top": 0.994,
+      "retrieval_top_cos": 0.645,
+      "scores": {
+        "faithfulness": 1.0,
+        "response_groundedness": 0.75,
+        "answer_relevancy": 0.8384896922667728,
+        "context_relevance": 1.0,
+        "context_recall": null,
+        "answer_accuracy": 1.0
+      },
+      "score_errors": {
+        "context_recall": "InstructorRetryException: <!DOCTYPE html PUBLIC \"-//W3C//DTD XHTML 1.0 Transitional//EN\" \"http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd\">\n<html>\n<!-- FileName: index.html\n     Language: [en]\n-->\n<!--Head-->\n<head>\n  "
+      }
+    },
+    {
+      "id": 9,
+      "level": "medium",
+      "type": "yes_no",
+      "question": "Có đúng là trong kháng chiến, Hồ Chí Minh chủ trương 'vừa đánh vừa đàm', trong đó đàm là chủ yếu, đánh là hỗ trợ không?",
+      "expect": "answer",
+      "reference": "Không. Hồ Chí Minh chủ trương 'vừa đánh vừa đàm', nhưng 'đánh là chủ yếu, đàm là hỗ trợ'; đấu tranh ngoại giao là một mặt trận có ý nghĩa chiến lược để thêm bạn bớt thù, cô lập kẻ thù.",
+      "status": "answered",
+      "answer": "Không đúng. Trong kháng chiến, Hồ Chí Minh chủ trương \"vừa đánh vừa đàm\", nhưng xác định **\"đánh là chủ yếu, đàm là hỗ trợ\"** [Chương II, trang 35].",
+      "contexts": [
+        "[Chương II, trang 35] . Đấu tranh ngoại giao cũng là một mặt trận có ý nghĩa chiến lược, có tác dụng thêm bạn bớt thù, phân hóa và cô lập kẻ thù, phát huy yếu tố chính nghĩa của cuộc đấu tranh giải phóng dân tộc và bảo vệ tổ quốc, tranh thủ sự đồng tình, ủng hộ của quốc tế. Hồ Chí Minh chủ trương ừa đánh vừa đàm”, “đánh là chủ yếu, đàm là hỗ trợ”. Đấu tranh kinh tế là ra sức tăng gia sản xuất, thực hành tiết kiệm, phát triển kinh tế của ta, phá hoại kinh tế của địch. Người kêu gọi: “hậu phương thi đua với tiền phương”, coi “ruộng rẫy là chiến trường, cuốc cày là vũ khí, nhà nông là chiến sĩ”, “tay cày tay súng, tay búa tay súng, ra sức phát triển sản xuất để phục vụ kháng chiến”. Chiến tranh về mặt văn hoa hay tư tưởng so với những mặt khác cũng không kém quan trọng",
+        "[Chương II, trang 34] . Đánh giặc không phải là để tiêu diệt hết lực lượng mà chủ yếu là đánh bại ý chí xâm lược của chúng, kết hợp giành thắng lợi về quân sự với giải pháp ngoại giao để kết thúc chiến tranh. Theo Hồ Chí Minh, trong sự nghiệp kháng chiến, kiến quốc “lực lượng chính là ở dân”. Người chủ trương tiến hành khởi nghĩa toàn dân và chiến tranh nhân dân",
+        "[Chương I, trang 17] . Về đối nội, Người chủ trương củng cố chính quyền non trẻ, đẩy lùi giặc đói, giặc dốt, khắc phục nền tài chính thiếu hụt. Về đối ngoại, Người vận dụng sách lược khôn khéo, mềm dẻo, thêm bạn bớt thù, “dĩ bất biến, ứng vạn biến”, tranh thủ thời gian để chuẩn bị thế và lực cho kháng chiến lâu dài. Chính nhờ đó, ngày 19 - – 46, với tư thế sẵn sàng và lòng tin sắt đá vào cuộc kháng chiến trường kỳ, gian khổ nhưng nhất định thắng lợi Hồ Chí Minh đã phát động cuộc kháng chiến toàn quốc chống thực dân Pháp. Từ đây, Người là linh hồn của cuộc kháng chiến, đề ra đường lối vừa kháng chiến, vừa kiến quốc, thực hiện kháng chiến toàn dân, toàn diện, trường kỳ, tự lực cánh sinh",
+        "[Chương II, trang 34] . Theo Hồ Chí Minh, trong sự nghiệp kháng chiến, kiến quốc “lực lượng chính là ở dân”. Người chủ trương tiến hành khởi nghĩa toàn dân và chiến tranh nhân dân. Xuất phát từ tương quan lực lượng lấy nhỏ đánh lớn, lấy ít địch nhiều, Hồ Chí Minh không chủ trương tiến hành kiểu chiến tranh thông thường, có chiến tuyến rõ rệt, chỉ dựa vào lực lượng quân đội và dốc toàn lực vào một số trận sống mái với kẻ thù, mà chủ trương phát động chiến tranh nhân dân, dựa vào lực lượng toàn dân, có lực lượng vũ trang làm nòng cốt, đấu tranh toàn diện với kẻ thù đế quốc với tư tưởng chiến lược tiến công, phương châm chiến lược đánh"
+      ],
+      "blocked_by": null,
+      "retrieval": "pass",
+      "retrieval_top": 0.996,
+      "retrieval_top_cos": 0.721,
+      "scores": {
+        "faithfulness": 1.0,
+        "response_groundedness": 1.0,
+        "answer_relevancy": 0.922176028288921,
+        "context_relevance": 1.0,
+        "context_recall": null,
+        "answer_accuracy": 1.0
+      },
+      "score_errors": {
+        "context_recall": "InstructorRetryException: <!DOCTYPE html PUBLIC \"-//W3C//DTD XHTML 1.0 Transitional//EN\" \"http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd\">\n<html>\n<!-- FileName: index.html\n     Language: [en]\n-->\n<!--Head-->\n<head>\n  "
+      }
+    },
+    {
+      "id": 10,
+      "level": "medium",
+      "type": "summary",
+      "question": "Tóm tắt Năm điểm lớn mà Hồ Chí Minh đưa ra để định hướng xây dựng nền văn hóa dân tộc.",
+      "expect": "answer",
+      "reference": "Năm điểm lớn gồm: (1) Xây dựng tâm lý: tinh thần độc lập, tự cường; (2) Xây dựng luân lý: biết hy sinh mình, làm lợi cho quần chúng; (3) Xây dựng xã hội: mọi sự nghiệp liên quan đến phúc lợi của nhân dân; (4) Xây dựng chính quyền: dân quyền; (5) Xây dựng kinh tế.",
+      "status": "answered",
+      "answer": "Năm điểm lớn định hướng cho việc xây dựng nền văn hóa dân tộc theo Hồ Chí Minh bao gồm:\n\n1. **Xây dựng tâm lý:** Tinh thần độc lập, tự cường [Chương VII, trang 96].\n2. **Xây dựng luân lý:** Biết hy sinh mình, làm lợi cho quần chúng [Chương VII, trang 96].\n3. **Xây dựng xã hội:** Mọi sự nghiệp có liên quan đến phúc lợi của nhân dân trong xã hội [Chương VII, trang 96].\n4. **Xây dựng chính quyền:** Dân quyền [Chương VII, trang 96].\n5. **Xây dựng kinh tế** [Chương VII, trang 96].",
+      "contexts": [
+        "[Chương VII, trang 96] . b. Quan niệm về xây dựng nền văn hoá mới Cùng với định nghĩa về văn hoá, Hồ Chí Minh còn đưa ra Năm điểm lớn định hướng cho việc xây dựng nền văn hoá dân tộc: “1. Xây dựng tâm lý: tinh thần độc lập, tự cường. 2. Xây dựng luân lý: biết hy sinh mình, làm lợi cho quần chúng. 3. Xây dựng xã hội: mọi sự nghiệp có liên quan đến phúc lợi của nhân dân trong xã hội. 4. Xây dựng chính quyền: dân quyền. 5. Xây dựng kinh tế”. Như vậy, ngay từ rất sớm, Hồ Chí Minh đã quan tâm đến văn hoá, đã thấy rõ vai trò, vị trí của văn hoá trong đời sống xã hội",
+        "[Chương VII, trang 96] . 3. Xây dựng xã hội: mọi sự nghiệp có liên quan đến phúc lợi của nhân dân trong xã hội. 4. Xây dựng chính quyền: dân quyền. 5. Xây dựng kinh tế”. Như vậy, ngay từ rất sớm, Hồ Chí Minh đã quan tâm đến văn hoá, đã thấy rõ vai trò, vị trí của văn hoá trong đời sống xã hội. Điều này cắt nghĩa vì sao ngay sau khi giành được độc lập, Hồ Chí Minh đã bắt tay vào việc xây dựng, kiến tạo một nền văn hoá mới ở Việt Nam trên tất cả mọi lĩnh vực, từ kinh tế, chính trị, xã hội, đạo đức, đến tâm lý con người, đã sớm đưa vvăn hoá vào chiến lược phát triển đất nước. 2. Quan điểm của Hồ Chí Minh về các vấn đề chung của văn hoá a. Quan điểm về vị trí và vai trò của văn hoá trong đời sống xã hội",
+        "[Chương VII, trang 117] . Trong lĩnh vực văn hóa, Hồ Chí Minh đã sớm nhận thấy vai trò và sức mạnh của văn hóa, đã sớm đưa văn hóa vào chiến lược phát triển của đất nước. Ngay sau khi giành được độc lập, Hồ Chí Minh đã đề nghị Chính phủ bắt tay ngay vào công cuộc xây dựng một nền văn hóa mới ở Việt Nam bằng việc phát động phong trào bình dân học vụ, diệt giặc dốt, nâng cao dân trí và xây dựng đời sống mới, xây dựng và phát triển thuần phong mỹ tục… đưa những giá trị văn hóa đi sâu vào quần chúng, coi nó như một sức mạnh vật chất, một động lực, một mục tiêu, một hệ điều tiết xã hội trong quá trình phát triển. Đây là một quan điểm hoàn toàn mới mẻ, điều mà mãi đến những năm 80 của thể kỷ XX, UNESCO mới tổng kết và coi đó như một quy luật phát triển của xã hội",
+        "[Chương III, trang 44] nếp sống mới, thực hành vệ sinh phòng bệnh, giải trí lành mạnh, bài trừ mê tín dị đoan, khắc phục phong tục tập quán lạc hậu… Về bản chất của nền văn hóa xã hội chủ nghĩa Việt Nam, Người khẳng định: “Phải xã hội chủ nghĩa về nội dung”. Để có một nền văn hóa như thế ta phải phát huy vốn cũ quý báu của dân tộc, đồng thời học tập văn hóa tiên tiến của thế giới. Phương châm xây dựng nền văn hóa mới là: dân tộc, khoa học, đại chúng. Hồ Chí Minh nhắc nhở phải làm cho phong trào văn hóa có bề rộng, đồng thời phải có bề sâu. Trong khi đáp ứng mặt giải trí thì không được xem nhẹ nâng cao tri thức của quần chúng, đồng thời Người luôn luôn nhắc nhở phải làm cho văn hóa gắn liền với lao động sản xuất. Hồ Chí Minh đặt lên hàng đầu nhiệm vụ của cách mạng xã hội chủ nghĩa là đào tạo con người"
+      ],
+      "blocked_by": null,
+      "retrieval": "pass",
+      "retrieval_top": 0.999,
+      "retrieval_top_cos": 0.843,
+      "scores": {
+        "faithfulness": 1.0,
+        "response_groundedness": 1.0,
+        "answer_relevancy": 0.9361790010234415,
+        "context_relevance": 1.0,
+        "context_recall": null,
+        "answer_accuracy": 1.0
+      },
+      "score_errors": {
+        "context_recall": "InstructorRetryException: <!DOCTYPE html PUBLIC \"-//W3C//DTD XHTML 1.0 Transitional//EN\" \"http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd\">\n<html>\n<!-- FileName: index.html\n     Language: [en]\n-->\n<!--Head-->\n<head>\n  "
+      }
+    },
+    {
+      "id": 11,
+      "level": "medium",
+      "type": "summary",
+      "question": "Tóm tắt nội dung các chuẩn mực Cần, Kiệm, Liêm, Chính theo tư tưởng Hồ Chí Minh.",
+      "expect": "answer",
+      "reference": "Cần là siêng năng, chăm chỉ, lao động có kế hoạch, hiệu quả, năng suất cao với tinh thần tự lực cánh sinh. Kiệm là tiết kiệm của nước, của dân, không xa xỉ, hoang phí, phô trương hình thức. Liêm là tôn trọng của công và của dân, trong sạch, không tham lam tiền của, địa vị, danh tiếng. Chính là thẳng thắn, đứng đắn: đối với mình không tự cao tự đại; đối với người không nịnh trên, khinh dưới; đối với việc phải để việc công lên trên, lên trước. Cán bộ, đảng viên phải thực hiện trước để làm gương cho dân.",
+      "status": "answered",
+      "answer": "Nội dung các chuẩn mực Cần, Kiệm, Liêm, Chính theo tư tưởng Hồ Chí Minh được tóm tắt như sau:\n\n* **Cần:** Là siêng năng, chăm chỉ; lao động có kế hoạch, có hiệu quả, có năng suất cao với tinh thần tự lực cánh sinh [Chương VII, trang 105].\n* **Kiệm:** Là tiết kiệm của nước của dân, không “xa xỉ, hoang phí, bừa bãi”, không phô trương hình thức, không liên hoan, chè chén lu bù [Chương VII, trang 105].\n* **Liêm:** Là luôn tôn trọng của công và của dân; phải “trong sạch, không tham lam” tiền của, địa vị, danh tiếng [Chương VII, trang 105].\n* **Chính:** Là thẳng thắn, đứng đắn [Chương VII, trang 105]. Người đưa ra các yêu cầu cụ thể:\n  * *Đối với mình:* Không tự cao, tự đại, tự phụ; phải khiêm tốn học hỏi, phát triển cái hay, sửa chữa cái dở [Chương VII, trang 105].\n  * *Đối với người:* Không nịnh người trên, không khinh người dưới; thật thà, không dối trá [Chương VII, trang 105].\n  * *Đối với việc:* Phải để việc công lên trên, lên trước; việc thiện nhỏ mấy cũng làm, việc ác nhỏ mấy cũng tránh [Chương VII, trang 105].",
+      "contexts": [
+        "[Chương VII, trang 105] . Cũng như khái niệm “trung, hiếu”, “cần, kiệm, liêm, chính, chí công vô tư” cũng là những khái niệm cũ trong đạo đức truyền thống dân tộc, được Hồ Chí Minh lọc bỏ những nội dung không phù hợp và đưa vào những nội dung mới đáp ứng những yêu cầu của cách mạng. Cần là siêng năng, chăm chỉ; lao động có kế hoạch, có hiệu quả, có năng suất cao với tinh thần tự lực cánh sinh. Kiệm là tiết kiệm của nước của dân, không “xa xỉ, hoang phí, bừa bãi”, không phô trương hình thức, không liên hoan, chè chén lu bù. Liêm là luôn tôn trọng của công và của dân. Phải “trong sạch, không tham lam” tiền của, địa vị, danh tiếng. Chính là thẳng thắn, đứng đắn. Ngưởi đưa ra một số yêu cầu: đối với mình – không được tự cao, tự đại, tự phụ, phải khiêm tốn học hỏi, phát triển cái hay, sửa chữa cái dở",
+        "[Chương VII, trang 102] . Đạo đức mới: Để xây dựng đời sống mới trước hết phải xây dựng đạo đức mới. Ngay trog phiên họp đầu tiên của hội dồng chính phủ, Hồ Chí Minh đã đề nghị “mở một chiến dịch giáo dục lại tinh thần nhân dân bằng cách thực hiện: CẦN, KIỆM, LIÊM, CHÍNH”. Sau này, Người đã nhiều lần khẳng định: “Nếu không giữ đúng Cần, Kiệm, Liêm, Chính thì dễ trở nên hủ bại, biến thành sâu mọt của dân”, “nêu cao và thực hành cần, kiệm, liêm, chính tức là nhen lửa cho đời sống mới”. Lối sống mới: Lối sống mới là lối sống có lý tưởng, có đạo đức. Đó còn là lối sống văn minh, tiên tiến, kết hợp hài hoà truyền thống tốt đẹp của dân tộc với tinh hoa văn hoá nhân loại. Con người muốn tồn tại phải làm sao cho có ăn, mặc, ở, đi lại và làm việc; phải làm sao cho mỗi một hoạt động đó đều mang tính văn hoá",
+        "[Chương VII, trang 105] . Để làm được như vậy, phải gần dân, kính trọng dân, học tập nhân dân, phải dựa vào dân và lấy dân làm gốc. Đối với cán bộ lãnh đạo, Hồ Chí Minh yêu cầu phải nắm vững dân tình, hiểu rõ dân tâm, thường xuyên quan tâm cải thiện dân sinh, nâng cao dân trí. - Cần, Kiệm, Liêm, Chính, Chí công vô tư Đây là phẩm chất đạo đức gắn liền với hoạt động hàng ngày của mỗi người, là đại cương đạo đức Hồ Chí Minh. Hồ Chí Minh chỉ ra rằng, bọn phong kiến ngày xưa nêu ra cần, kiệm, liêm, chính, nhưng không bao giờ thực hiện mà lại bắt nhân dân tuân theo để phụng sự quyền lợi của chúng. Ngày nay, ta đề ra cần kiệm liêm chính cho cán bộ thực hiện làm gương cho nhân dân theo là để đem lại hạnh phúc cho dân",
+        "[Chương VII, trang 105] . Liêm là luôn tôn trọng của công và của dân. Phải “trong sạch, không tham lam” tiền của, địa vị, danh tiếng. Chính là thẳng thắn, đứng đắn. Ngưởi đưa ra một số yêu cầu: đối với mình – không được tự cao, tự đại, tự phụ, phải khiêm tốn học hỏi, phát triển cái hay, sửa chữa cái dở. Đối với người – không nịnh người trên, không khinh người dưới, thật thà, không dối trá. Đối với việc – phải để việc công lên trên, lên trước, việc thiện nhỏ mấy cũng làm, việc ác nhỏ mấy cũng tránh. Hồ Chí Minh chỉ ra rằng, các đức tính cần, kiệm, liêm, chính, có quan hệ chặt chẽ với nhau, ai cũng phải thực hiện, song cán bộ đảng viên phải là người thực hiện trước để làm kiểu mẫu cho dân. Người cho rằng, những người trong các công sở đều có nhiều hoặc ít quyền hạn"
+      ],
+      "blocked_by": null,
+      "retrieval": "pass",
+      "retrieval_top": 0.998,
+      "retrieval_top_cos": 0.792,
+      "scores": {
+        "faithfulness": null,
+        "response_groundedness": 1.0,
+        "answer_relevancy": 0.9753268152666846,
+        "context_relevance": 1.0,
+        "context_recall": null,
+        "answer_accuracy": 0.5
+      },
+      "score_errors": {
+        "faithfulness": "InstructorRetryException: Connection error.",
+        "context_recall": "InstructorRetryException: <!DOCTYPE html PUBLIC \"-//W3C//DTD XHTML 1.0 Transitional//EN\" \"http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd\">\n<html>\n<!-- FileName: index.html\n     Language: [en]\n-->\n<!--Head-->\n<head>\n  "
+      }
+    },
+    {
+      "id": 12,
+      "level": "medium",
+      "type": "yes_no",
+      "question": "Theo Hồ Chí Minh, bản chất giai cấp công nhân của Đảng có phải chỉ do số lượng đảng viên xuất thân từ công nhân quyết định không?",
+      "expect": "answer",
+      "reference": "Không. Bản chất giai cấp công nhân của Đảng không chỉ ở số lượng đảng viên xuất thân công nhân mà còn ở nền tảng lý luận, tư tưởng của Đảng là chủ nghĩa Mác – Lênin, mục tiêu của Đảng là chủ nghĩa cộng sản, và việc Đảng tuân thủ nghiêm túc các nguyên tắc xây dựng Đảng kiểu mới của giai cấp vô sản.",
+      "status": "answered",
+      "answer": "Theo Hồ Chí Minh, bản chất giai cấp công nhân của Đảng không phải chỉ do số lượng đảng viên xuất thân từ công nhân quyết định [Chương IV, trang 56]. \n\nNội dung quy định bản chất giai cấp công nhân của Đảng còn ở:\n- Nền tảng lý luận và tư tưởng của Đảng là chủ nghĩa Mác - Lênin [Chương IV, trang 56].\n- Mục tiêu của Đảng cần đạt tới là chủ nghĩa cộng sản [Chương IV, trang 56].\n- Việc Đảng tuân thủ một cách nghiêm túc, chặt chẽ những nguyên tắc xây dựng Đảng kiểu mới của giai cấp vô sản [Chương IV, trang 56].",
+      "contexts": [
+        "[Chương IV, trang 56] Hồ Chí Minh khẳng định bản chất giai cấp công nhân của Đảng ta dựa trên cơ sở thấy rõ sứ mệnh lịch sử của giai cấp công nhân Việt Nam. Còn các giai cấp, tâng lớp khác chịu sự lãnh đạo của giai cấp công nhân, trở thành đồng minh của giai cấp công nhân. Nội dung quy định bản chất giai cấp công nhân không phải chỉ là số lượng đảng viên xuất thân từ công nhân mà còn ở nền tảng lý luận và tư tưởng của Đảng là chủ nghĩa Mac – Lênin; mục tiêu của Đảng cần đạt tới là chủ nghĩa cộng sản; Đảng tuân thủ một cách nghiêm túc, chặt chẽ những nguyên tắc xây dựng Đảng kiểu mới của giai cấp vô sản",
+        "[Chương IV, trang 55] . Năm 1965, Hồ Chí Minh cho rằng: Đảng ta xứng đáng là đội tiên phong, là bộ tham mưu của giai cấp vô sản, của nhân dân lao động và của cả dân tộc. Tuy có nhiều cách thể hiện khác nhau như vậy nhưng quan điểm nhất quán của Hồ Chí Minh về bản chất giai cấp của Đảng là Đảng ta mang bản chất của giai cấp công nhân. Điều này cũng giống như Đảng ta mang tên là Đảng Lao động nhưng bản chất giai cấp của Đảng chỉ là bản chất giai cấp công nhân. Trong Báo cáo chính trị tại Đại hội II, khi nêu lên Đảng ta còn là Đảng của nhân dân lao động và của toàn dân tộc, Hồ Chí Minh cũng nêu lên toàn bộ cơ sở lý luận và các nguyên tắc tổ chức, sinh hoạt Đảng, những nguyên tắc này tuân thủ một cách chặt chẽ học thuyết về Đảng kiểu mới của giai cấp vô sản của Lênin.",
+        "[Chương IV, trang 53] . Đây chính là một quan điểm quan trọng của Hồ Chí Minh về sự hình thành Đảng cộng sản Việt Nam, là sự phát triển sáng tạo chủ nghĩa Mac – Lênin trên cơ sở tổng kết thực tiễn Việt Nam. Hồ Chí Minh thấy rõ vai trò to lớn của chủ nghĩa Mac – Lênin đối với cách mạng Việt Nam và đối với quá trình hình thành Đảng cộng sản Việt Nam. Người cũng đánh giá cao vị trí, vai trò lãnh đạo của giai cấp công nhân Việt Nam trong sắp xếp lực lượng cách mạng. Số lượng giai cấp công nhân Việt Nam tuy ít nhưng theo Hồ Chí Minh, vai trò lãnh đạo của lực lượng cách mạng không phải do số lượng đó quyết định. Hồ Chí Minh chỉ rõ dặc điểm của giai cấp công nhân Việt Nam là: kiên quyết, triệt để, tập thể, có tổ chức, có kỷ luật",
+        "[Chương IV, trang 53] . Số lượng giai cấp công nhân Việt Nam tuy ít nhưng theo Hồ Chí Minh, vai trò lãnh đạo của lực lượng cách mạng không phải do số lượng đó quyết định. Hồ Chí Minh chỉ rõ dặc điểm của giai cấp công nhân Việt Nam là: kiên quyết, triệt để, tập thể, có tổ chức, có kỷ luật. Giai cấp tiên tiến nhất trong sản xuất, gánh trách nhiệm đánh đổ tư bản và đế quốc để gây dựng một xã hội mới, giai cấp công nhân có thể thấm nhuần tư tưởng cách mạng nhất tức là chủ nghĩa Mac – Lênin. Đồng thời, tinh thần đấu tranh của họ ảnh hưởng và giáo dục các tầng lớp khác. Hồ Chí Minh chỉ ra rằng, sở dĩ giai cấp công nhân Việt Nam giữ vai trò lãnh đạo cách mạng Việt Nam còn là vì: giai cấp công nhân có chủ nghĩa Mac – Lênin. Trên nền tảng đấu tranh, họ xây dựng nên đảng theo chủ nghĩa Mac – Lênin"
+      ],
+      "blocked_by": null,
+      "retrieval": "pass",
+      "retrieval_top": 1.0,
+      "retrieval_top_cos": 0.819,
+      "scores": {
+        "faithfulness": 1.0,
+        "response_groundedness": 1.0,
+        "answer_relevancy": 0.8750643611629582,
+        "context_relevance": 1.0,
+        "context_recall": null,
+        "answer_accuracy": 1.0
+      },
+      "score_errors": {
+        "context_recall": "InstructorRetryException: <!DOCTYPE html PUBLIC \"-//W3C//DTD XHTML 1.0 Transitional//EN\" \"http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd\">\n<html>\n<!-- FileName: index.html\n     Language: [en]\n-->\n<!--Head-->\n<head>\n  "
+      }
+    },
+    {
+      "id": 13,
+      "level": "medium",
+      "type": "cross_reference",
+      "question": "Theo Hồ Chí Minh, nhân dân ta đã đoàn kết trong những mặt trận nào và mỗi mặt trận gắn với thắng lợi gì?",
+      "expect": "answer",
+      "reference": "Đoàn kết trong Mặt trận Việt Minh, nhân dân ta làm Cách mạng Tháng Tám thành công, lập nên nước Việt Nam Dân chủ Cộng hòa; đoàn kết trong Mặt trận Liên Việt, kháng chiến thắng lợi, lập lại hòa bình ở Đông Dương, hoàn toàn giải phóng miền Bắc; đoàn kết trong Mặt trận Tổ quốc Việt Nam, giành thắng lợi trong khôi phục kinh tế, cải tạo xã hội chủ nghĩa và xây dựng chủ nghĩa xã hội ở miền Bắc.",
+      "status": "answered",
+      "answer": "Theo Hồ Chí Minh, nhân dân ta đã đoàn kết trong các mặt trận sau:\n\n* **Mặt trận Việt Minh:** Làm Cách mạng Tháng Tám thành công, làm nên nước Việt Nam Dân chủ Cộng hòa [Chương V, trang 68].\n* **Mặt trận Liên Việt:** Kháng chiến thắng lợi, lập lại hòa bình ở Đông Dương, hoàn toàn giải phóng Miền Bắc [Chương V, trang 68].\n* **Mặt trận Tổ quốc Việt Nam:** Giành thắng lợi trong công cuộc khôi phục kinh tế, cải tạo xã hội chủ nghĩa và trong sự nghiệp xây dựng chủ nghĩa xã hội ở Miền Bắc [Chương V, trang 68].",
+      "contexts": [
+        "[Chương V, trang 68] . Chính sách mặt trận của Đảng ta và chủ tịch Hồ Chí Minh đặt ra là để thực hiện đại đoàn kết dân tộc. Nhờ tư tưởng nhất quán và chính sách mặt trận đúng đắn, Đảng ta và chủ tịch Hồ Chí Minh đã xây dựng thành công khối đại đoàn kết dân tộc, đưa cách mạng Việt Nam giành được nhiều thắng lợi to lớn. Hồ Chí Minh viết: “Đoàn kết trong mặt trận Việt Minh, nhân dân ta đã làm Cách Mạng Tháng Tám thành công, làm nên nước Việt Nam Dân chủ Cộng hòa. Đoàn kết trong mặt trận Liên Việt, nhân dân ta đã kháng chiến thắng lợi, lập lại hòa bình ở Đông Dương, hoàn toàn giải phóng Miền Bắc. Đoàn kết trong mặt trận Tổ quốc Việt Nam nhân dân ta đã giành được thắng lợi trong công cuộc khôi phục kinh tế, cải tạo xã hội chủ nghĩa và trong sự nghiệp xây dựng chủ nghĩa xã hội ở Miền Bắc”",
+        "[Chương V, trang 80] . Như vậy: tư tưởng đại đoàn kết vì thắng lợi cách mạng của Hồ Chí Minh đã định hướng cho việc hình thành bốn tầng mặt trận: Mặt trận đại đoàn kết dân tộc; Mặt trận đoàn kết Việt – Miên – Lào; Mặt trận nhân dân Á – Phi đoàn kết với Việt Nam; Mặt trận nhân dân thế giới đoàn kết với Việt Nam chống đế quốc xâm lược. Đây thực sự là sự phát triển rực rỡ nhất và thắng lợi to lớn nhất của tư tưởng đại đoàn kết của Hồ Chí Minh. 3. Nguyên tắc đoàn kết quốc tế a",
+        "[Chương V, trang 68] . Đoàn kết trong mặt trận Tổ quốc Việt Nam nhân dân ta đã giành được thắng lợi trong công cuộc khôi phục kinh tế, cải tạo xã hội chủ nghĩa và trong sự nghiệp xây dựng chủ nghĩa xã hội ở Miền Bắc”. Từ thực tiễn như vậy, Hồ Chí Minh đã khái quát thành nhiều luận điểm có tính chân lý về vao trò của khối đai đoàn kết: Đoàn kết làm ra sức mạnh. Hồ Chí Minh rất nhiều lần nhấn mạnh luận điểm này. Người viết: “Đoàn kết là sức mạnh của chúng ta",
+        "[Chương V, trang 82] . Trên thực tế, đã hình thành một mặt trận nhân dân thế giới, có cả nhân dân Pháp và nhân dân Mỹ đoàn kết với Việt Nam chống đế quốc xâm lược, góp phần kết thúc thắng lợi hai cuộc kháng chiến chống thực dân Pháp và đế quốc Mỹ. Đánh giá vai trò và những cống hiến của Hồ Chí Minh trong công tác tập hợp lục lượng cách mạng xây dựng khối đại đoàn kết, Rômét Chandra, nguyên chủ tịch hộ đồng hoà bình thế giới cho rằng: “Bất cứ nơi nào chiến đấu cho độc lập, tự do, ở đó có Hồ Chí Minh và ngọn cờ Hồ Chí Minh bay cao. Bất cứ ở đâu, nhân dân chiến đấu cho một thế giới mới, chống lại đói nghèo, ở đó có ngọn cờ Hồ Chí Minh bay cao” b"
+      ],
+      "blocked_by": null,
+      "retrieval": "pass",
+      "retrieval_top": 0.998,
+      "retrieval_top_cos": 0.766,
+      "scores": {
+        "faithfulness": 0.2727272727272727,
+        "response_groundedness": 1.0,
+        "answer_relevancy": 0.9332385171524723,
+        "context_relevance": 1.0,
+        "context_recall": null,
+        "answer_accuracy": 1.0
+      },
+      "score_errors": {
+        "context_recall": "InstructorRetryException: <!DOCTYPE html PUBLIC \"-//W3C//DTD XHTML 1.0 Transitional//EN\" \"http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd\">\n<html>\n<!-- FileName: index.html\n     Language: [en]\n-->\n<!--Head-->\n<head>\n  "
+      }
+    },
+    {
+      "id": 14,
+      "level": "hard",
+      "type": "multi_hop",
+      "question": "Văn kiện nào của Lênin mà Nguyễn Ái Quốc đọc năm 1920 đã giúp Người tìm thấy con đường giải phóng dân tộc, và sau đó Người có hành động gì đánh dấu bước chuyển từ người yêu nước thành người cộng sản?",
+      "expect": "answer",
+      "reference": "Đó là Sơ thảo lần thứ nhất những luận cương về vấn đề dân tộc và vấn đề thuộc địa của Lênin (1920). Sau đó, việc Nguyễn Ái Quốc biểu quyết tán thành Quốc tế III và tham gia thành lập Đảng Cộng sản Pháp, trở thành người cộng sản Việt Nam đầu tiên, đánh dấu bước chuyển từ chủ nghĩa yêu nước đến chủ nghĩa Mác – Lênin, từ giác ngộ dân tộc đến giác ngộ giai cấp.",
+      "status": "refused",
+      "answer": "Yêu cầu không được hỗ trợ.",
+      "contexts": [],
+      "blocked_by": "input-guard",
+      "retrieval": null,
+      "retrieval_top": null,
+      "retrieval_top_cos": null
+    },
+    {
+      "id": 15,
+      "level": "hard",
+      "type": "multi_hop",
+      "question": "Hội nghị Ban Chấp hành Trung ương lâm thời tháng 10-1930 đã phê phán Chánh cương vắn tắt, Sách lược vắn tắt của Nguyễn Ái Quốc như thế nào, và sự kiện quốc tế nào năm 1935 chứng tỏ quan điểm của Người là đúng?",
+      "expect": "answer",
+      "reference": "Hội nghị (14 đến 31-10-1930, tại Hương Cảng) cho rằng Chánh cương, Sách lược vắn tắt phạm sai lầm chính trị nguy hiểm vì 'chỉ lo đến phản đế mà quên mất lợi ích giai cấp đấu tranh', ra nghị quyết thủ tiêu chúng và đổi tên Đảng thành Đảng Cộng sản Đông Dương. Tháng 7-1935, Đại hội VII Quốc tế Cộng sản phê phán khuynh hướng 'tả', chủ trương mở rộng mặt trận dân tộc thống nhất, chứng tỏ quan điểm của Nguyễn Ái Quốc là đúng đắn.",
+      "status": "refused",
+      "answer": "Yêu cầu không được hỗ trợ.",
+      "contexts": [],
+      "blocked_by": "input-guard",
+      "retrieval": null,
+      "retrieval_top": null,
+      "retrieval_top_cos": null
+    },
+    {
+      "id": 16,
+      "level": "hard",
+      "type": "cross_reference",
+      "question": "Tại Đại hội nào Đảng ra hoạt động công khai với tên Đảng Lao động Việt Nam, và khi ra mắt, Hồ Chí Minh tuyên bố mục đích của Đảng gói gọn trong 8 chữ nào?",
+      "expect": "answer",
+      "reference": "Tại Đại hội Đại biểu toàn quốc lần thứ II năm 1951, Đảng ra hoạt động công khai với tên Đảng Lao động Việt Nam. Trong lời kết thúc buổi ra mắt ngày 3-3-1951, Hồ Chí Minh tuyên bố mục đích của Đảng gồm 8 chữ: 'Đoàn kết toàn dân, phụng sự Tổ quốc'.",
+      "status": "answered",
+      "answer": "Đảng ra hoạt động công khai với tên Đảng Lao động Việt Nam tại Đại hội Đại biểu toàn quốc lần thứ II của Đảng [Chương I, trang 17]. \n\nKhi ra mắt, Hồ Chí Minh đã tuyên bố mục đích của Đảng gói gọn trong 8 chữ là: “Đoàn kết toàn dân, phụng sự tổ quốc” [Chương V, trang 69].",
+      "contexts": [
+        "[Chương V, trang 69] Do đó, đại đoàn kết dân tộc phải được xác định là mục tiêu, nhiệm vụ hàng đầu của Đảng, phải được quán triệt trong tất cả mọi lĩnh vực, từ đường lối, chủ trương, chính sách tới hoạt động thực tiễn của Đảng. Trong Lời kết thúc buổi ra mắt của Đảng Lao động Việt Nam này - - 1951, Hồ Chí Minh đã thay mặt Đảng tuyên bố trước toàn thể dân tộc: “Mục đích của Đảng Lao động Việt Nam có thể gôm trong 8 chữ là: Đoàn kết toàn dân, phụng sự tổ quốc”. Để thực hiện mục tiêu này, Người thường xuyên nhắc nhở cán bộ, đảng viên phải thấm nhuần quan điểm quần chúng, phải gần gũi quần chúng, lắng nghe quần chúng; vận động, tổ chức và giáo dục quần chúng, coi sức mạnh của cách mạng là ở nơi quần chúng; phải thấm nhuần lời dạy: “Dễ trăm lần không dân cũng chịu, khó vạn lần dân liệu cũng xong”",
+        "[Chương I, trang 17] . Từ đây, Người là linh hồn của cuộc kháng chiến, đề ra đường lối vừa kháng chiến, vừa kiến quốc, thực hiện kháng chiến toàn dân, toàn diện, trường kỳ, tự lực cánh sinh. Người đặc biệt chăm lo xây dựng Đảng, xây dựng đội ngũ cán bộ, đấu tranh chống tệ quan liêu, mệnh lệnh, xây dựng đạo đức cách mạng, cần, kiệm, liêm, chính, chí công vô tư, phát động phong trào thi đua ái quốc… Năm 1951, do yêu cầu tăng cường sự lãnh đạo của Đảng để đẩy mạnh kháng chiến đến thắng lợi hoàn toàn, Trung ương Đảng và chủ tịch Hồ Chí Minh đã triệu tập Đại hội Đại biểu toàn quốc lần thứ II của Đảng, đưa Đảng ra hoạt động công khai với tên Đảng Lao Động Việt Nam. Đại hội đã chủ trương thành lập đảng riêng ở Lào và Campuchia, kịp thời lãnh đạo các nhiệm vụ cách mạng ở mỗi nước",
+        "[Chương IV, trang 55] . Quan điểm của Hồ Chí Minh hoàn toàn tuân thủ những quan điểm của Lênin về xây dựng Đảng kiểu mới của giai cấp vô sản. Nhưng, Hồ Chí Minh còn có một cách thể hiện khác về vấn đề “Đảng của ai?”. Trong Báo cáo chính trị tại Đại hội đại biểu toàn quốc lần thứ II của Đảng, Hồ Chí Minh nêu rõ: “Trong giai đoạn này, quyền lợi của giai cấp công nhân và nhân dân lao động và của dân tộc là một. Chính vì Đảng Lao động Việt Nam là Đảng của giai cấp công nhân và nhân dân lao động Việt Nam, cho nên nó phải là Đảng của dân tộc Việt Nam”. Năm 1953, Hồ Chí Minh viết: “Đảng Lao động là tổ chức cao nhất của giai cấp cần lao và đại biểu cho lợi ích của cả dân tộc…Đảng là Đảng của giai cấp lao động, mà cũng là Đảng của toàn dân”",
+        "[Chương IV, trang 58] Theo Hồ Chí Minh, Đảng ta không có lợi ích nào khác ngoài lợi ích của tổ quốc, của nhân dân. Đó là mục đích, lý tưởng cao cả không bao giờ thay đổi trong suốt quá trình lãnh đạo cách mạng Việt Nam. Người chỉ rõ: “Những người cộng sản chúng ta không một phút nào được quên lý tưởng cao cả của mình là phấn đấu cho tổ quốc hoàn toàn độc lập, cho chủ nghĩa xã hội hoàn toàn thắng lợi trên đất nước ta và trên toàn thế giới”. Khi trở thành Đảng cầm quyền, mục đích, lý tưởng đó không những không thay đổi mà còn có thêm những điều kiện và sức mạnh nhằm hiện thực hóa mục đích, lý tưởng ấy"
+      ],
+      "blocked_by": null,
+      "retrieval": "pass",
+      "retrieval_top": 0.999,
+      "retrieval_top_cos": 0.703,
+      "scores": {
+        "faithfulness": 1.0,
+        "response_groundedness": 1.0,
+        "answer_relevancy": 0.8394087210781699,
+        "context_relevance": 1.0,
+        "context_recall": null,
+        "answer_accuracy": 0.75
+      },
+      "score_errors": {
+        "context_recall": "InstructorRetryException: <!DOCTYPE html PUBLIC \"-//W3C//DTD XHTML 1.0 Transitional//EN\" \"http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd\">\n<html>\n<!-- FileName: index.html\n     Language: [en]\n-->\n<!--Head-->\n<head>\n  "
+      }
+    },
+    {
+      "id": 17,
+      "level": "hard",
+      "type": "cross_reference",
+      "question": "So với Lênin, Hồ Chí Minh bổ sung thêm yếu tố nào vào sự ra đời của Đảng Cộng sản Việt Nam, và yếu tố đó gắn với giá trị truyền thống nào được giáo trình coi là cao quý, thiêng liêng nhất của dân tộc?",
+      "expect": "answer",
+      "reference": "Lênin nêu hai yếu tố là chủ nghĩa Mác kết hợp với phong trào công nhân; Hồ Chí Minh bổ sung yếu tố thứ ba là phong trào yêu nước (chủ nghĩa Mác – Lênin kết hợp với phong trào công nhân và phong trào yêu nước). Yếu tố này gắn với chủ nghĩa yêu nước truyền thống – tư tưởng, tình cảm cao quý, thiêng liêng nhất, cội nguồn trí tuệ sáng tạo và lòng dũng cảm của người Việt Nam, đồng thời là tiền đề tư tưởng hình thành tư tưởng Hồ Chí Minh.",
+      "status": "refused",
+      "answer": "Giáo trình không đề cập nội dung này.",
+      "contexts": [],
+      "blocked_by": null,
+      "retrieval": "pass",
+      "retrieval_top": 0.998,
+      "retrieval_top_cos": 0.764
+    },
+    {
+      "id": 18,
+      "level": "hard",
+      "type": "cross_reference",
+      "question": "Tổng hợp quan điểm của Hồ Chí Minh về mối quan hệ giữa đức và tài, giữa 'hồng' và 'chuyên' được thể hiện trong các phần bàn về mục tiêu chủ nghĩa xã hội và về đạo đức.",
+      "expect": "answer",
+      "reference": "Hồ Chí Minh luôn gắn tài với đức: 'có tài mà không có đức là hỏng', nhưng có đức mà không có tài thì làm việc gì cũng khó; chính trị là tinh thần, chuyên môn là thể xác, mỗi người phải vừa 'hồng' vừa 'chuyên'. Trong tư tưởng đạo đức, đức và tài, hồng và chuyên, phẩm chất và năng lực thống nhất làm một, trong đó đức là gốc của tài, hồng là gốc của chuyên, phẩm chất là gốc của năng lực; tài là thể hiện cụ thể của đức trong hiệu quả hành động.",
+      "status": "answered",
+      "answer": "Trong tư tưởng Hồ Chí Minh, quan điểm về mối quan hệ giữa đức và tài, giữa \"hồng\" và \"chuyên\" được thể hiện như sau:\n\n* **Sự thống nhất giữa đức và tài, \"hồng\" và \"chuyên\":** Đức và tài, hồng và chuyên, phẩm chất và năng lực thống nhất làm một [Chương VII, trang 104]. Tất cả mọi người đều phải luôn trau dồi đạo đức và tài năng, vừa có đức vừa có tài, vừa \"hồng\" vừa \"chuyên\" [Chương III, trang 44].\n* **Mối quan hệ giữa Đức và Tài:**\n  * Hồ Chí Minh luôn đặt đạo đức bên cạnh tài năng, gắn đức với tài, lời nói đi đôi với hành động và hiệu quả trên thực tế [Chương VII, trang 104].\n  * Theo Người, \"có tài mà không có đức là hỏng\"; dĩ nhiên, đức phải đi đôi với tài, nếu không có tài thì làm việc gì cũng khó [Chương III, trang 44].\n  * Đức là gốc của tài; phẩm chất là gốc của năng lực [Chương VII, trang 104].\n  * Tài là thể hiện cụ thể của đức trong hiệu quả hành động [Chương VII, trang 104].\n* **Mối quan hệ giữa \"Hồng\" và \"Chuyên\" (Chính trị và Chuyên môn):**\n  * Hồng là gốc của chuyên [Chương VII, trang 104].\n  * Phẩm chất chính trị gắn liền với trình độ học vấn, chuyên môn, nghiệp vụ; trong đó \"chính trị là tinh thần, chuyên môn là thể xác. Hai mặt đó thống nhất trong một người\" [Chương III, trang 44].",
+      "contexts": [
+        "[Chương VII, trang 104] . Như vậy, trong tư tưởng Hồ Chí Minh, đức và tài, hồng và chuyên, phẩm chất và năng lực thống nhất làm một. Trong đó; Đức là gốc của tài; hồng là gốc của chuyên; phẩm chất là gốc của năng lực. Tài là thể hiện cụ thể của đức trong hiêu quả hành động. - Đạo đức là nhân tố tạo nên sức hấp dẫn của chủ nghĩa xã hội Theo Hồ Chí Minh, sức hấp dẫn của chủ nghĩa xã hội chưa phải là ở lý tưởng cao xa, ở mức sống vật chất dồi dào, ở tư tưởng được tự do giải phóng, mà trước hết là ở những giá trị đạo đức cao đẹp, ở phẩm chất của những người cộng sản ưu tú, bằng tấm gương sống và hành động của mình, chiến đấu chi lý tưởng đó trở thành hiện thực",
+        "[Chương III, trang 44] . Theo Người, :có tài mà không có đức là hỏng”; dĩ nhiên, đức phải đi đôi với tài, nếu không có tài thì làm việc gì cũng khó. Cũng như vậy, Người luôn gắn phẩm chất chính trị với trình độ học vấn, chuyên môn, nghiệp vụ, trong đó “chính trị là tinh thần, chuyên môn là thể xác. Hai mặt đó thống nhất trong một người. Do vậy, tất cả mọi người đều phải luôn luôn trau dồi đạo đức và tài năng, vừa có đức vừa có tài, vừa “hồng” vừa “chuyên”. b. Động lực Để thực hiện những mục tiêu đó, cần phát hiện những động lực và những điều kiện bảo đảm cho động lực đó thực sự trở thành sức mạnh thúc đẩy công cuộc xây dựng chủ nghĩa xã hội, nhất là những động lực bên trong, nguồn nội lực của chủ nghĩa xã hội",
+        "[Chương III, trang 44] . Người cho rằng: “Muốn có con người xã hội chủ nghĩa, phải có tư tưởng xã hội chủ nghĩa”, tư tưởng xã hội chủ nghĩa ở mỗi con người là kết quả của việc học tập, vận dụng, phát triển chủ nghĩa Mac – Lênin, nâng cao lòng yêu nước, yêu chủ nghĩa xã hội. Hồ Chí Minh luôn luôn nhấn mạnh đến trau dồi, rèn luyện đạo đức cách mạng; đồng thời Người cũng rất quan tâm đến mặt tài năng, luôn tạo điều kiện để mỗi người rèn luyện tài năng, đem tài năng cống hiến cho xã hội. Tuy vậy, Hồ Chí Minh luôn gắn tài năng với đạo đức. Theo Người, :có tài mà không có đức là hỏng”; dĩ nhiên, đức phải đi đôi với tài, nếu không có tài thì làm việc gì cũng khó. Cũng như vậy, Người luôn gắn phẩm chất chính trị với trình độ học vấn, chuyên môn, nghiệp vụ, trong đó “chính trị là tinh thần, chuyên môn là thể xác",
+        "[Chương VII, trang 104] . Tư tưởng đạo đức Hồ Chí Minh là đạo đức trong hành dộng, lấy hiệu quả thực tế làm thước đo. Chính vì vậy Hồ Chí Minh luôn đặt đạo đức bên cạnh tài năng, gắn đức với tài, lời nói đi đôi với hành động và hiêu quả trên thực tế. Người nói: “phải lấy kết quả thiết thực đã góp sức bao nhiêu cho sản xuất và lãnh đạo sản xuất mà đo ý chí cách mạng của mình. Hãy kiên quyết chống bệnh nói suông, thói phô trương hình thức, lối làm việc không nhằm mục đích nâng cao sản xuất”. Như vậy, trong tư tưởng Hồ Chí Minh, đức và tài, hồng và chuyên, phẩm chất và năng lực thống nhất làm một. Trong đó; Đức là gốc của tài; hồng là gốc của chuyên; phẩm chất là gốc của năng lực. Tài là thể hiện cụ thể của đức trong hiêu quả hành động"
+      ],
+      "blocked_by": null,
+      "retrieval": "pass",
+      "retrieval_top": 0.999,
+      "retrieval_top_cos": 0.805,
+      "scores": {
+        "faithfulness": null,
+        "response_groundedness": 1.0,
+        "answer_relevancy": 0.9280882527031977,
+        "context_relevance": 1.0,
+        "context_recall": null,
+        "answer_accuracy": 1.0
+      },
+      "score_errors": {
+        "faithfulness": "InstructorRetryException: <!DOCTYPE html PUBLIC \"-//W3C//DTD XHTML 1.0 Transitional//EN\" \"http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd\">\n<html>\n<!-- FileName: index.html\n     Language: [en]\n-->\n<!--Head-->\n<head>\n  ",
+        "context_recall": "InstructorRetryException: <!DOCTYPE html PUBLIC \"-//W3C//DTD XHTML 1.0 Transitional//EN\" \"http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd\">\n<html>\n<!-- FileName: index.html\n     Language: [en]\n-->\n<!--Head-->\n<head>\n  "
+      }
+    },
+    {
+      "id": 19,
+      "level": "hard",
+      "type": "summary",
+      "question": "Tóm tắt đặc điểm lớn nhất, nhiệm vụ lịch sử và lý do tính chất khó khăn, phức tạp của thời kỳ quá độ lên chủ nghĩa xã hội ở Việt Nam theo Hồ Chí Minh.",
+      "expect": "answer",
+      "reference": "Đặc điểm lớn nhất là từ một nước nông nghiệp lạc hậu tiến lên chủ nghĩa xã hội không kinh qua giai đoạn phát triển tư bản chủ nghĩa. Nhiệm vụ lịch sử gồm hai nội dung: xây dựng nền tảng vật chất – kỹ thuật và các tiền đề kinh tế, chính trị, văn hóa, tư tưởng cho chủ nghĩa xã hội; cải tạo xã hội cũ, xây dựng xã hội mới, lấy xây dựng làm trọng tâm. Thời kỳ này khó khăn, phức tạp, lâu dài vì: đây là cuộc cách mạng làm đảo lộn mọi mặt đời sống xã hội; Đảng và nhân dân chưa có kinh nghiệm, nhất là về kinh tế; và luôn bị các thế lực phản động trong và ngoài nước chống phá. Vì vậy phải thận trọng, tránh nôn nóng, chủ quan, đốt cháy giai đoạn.",
+      "status": "answered",
+      "answer": "Dưới đây là tóm tắt các nội dung về thời kỳ quá độ lên chủ nghĩa xã hội ở Việt Nam theo tư tưởng Hồ Chí Minh:\n\n1. **Đặc điểm lớn nhất:** \nNước ta từ một nước nông nghiệp lạc hậu tiến lên chủ nghĩa xã hội không phải kinh qua giai đoạn phát triển tư bản chủ nghĩa [Chương III, trang 46].\n\n2. **Nhiệm vụ lịch sử:**\n* **Thực chất:** Là quá trình cải biến nền sản xuất lạc hậu thành nền sản xuất tiên tiến, hiện đại [Chương III, trang 46].\n* **Hai nội dung lớn:**\n    * Xây dựng nền tảng vật chất và kỹ thuật, xây dựng các tiền đề về kinh tế, chính trị, văn hóa, tư tưởng cho chủ nghĩa xã hội [Chương III, trang 46].\n    * Cải tạo xã hội cũ, xây dựng xã hội mới, kết hợp cải tạo và xây dựng (trong đó lấy xây dựng làm trọng tâm, cốt yếu, chủ chốt và lâu dài) [Chương III, trang 46].\n\n3. **Lý do tính chất khó khăn, phức tạp:**\n* Đây là cuộc cách mạng làm đảo lộn mọi mặt đời sống xã hội, từ lực lượng sản xuất, quan hệ sản xuất đến cơ sở hạ tầng và kiến trúc thượng tầng [Chương III, trang 46].\n* Đặt ra và đòi hỏi phải giải quyết đồng thời hàng loạt mâu thuẫn khác nhau [Chương III, trang 46].",
+      "contexts": [
+        "[Chương III, trang 46] . Điều này đòi hỏi phải áp dụng toàn diện các hình thức đấu tranh cả về chính trị, kinh tế, văn hóa, xã hội nhằm chống lại các thế lực đi ngược lại con đường xã hội chủ nghĩa. Theo Hồ Chí Minh, do những đặc điểm và tính chất quy định, quá độ lên chủ nghĩa xã hội ở Việt Nam là một quá trình dần dần, khó khăn, phức tạp và lâu dài. Nhiệm vụ lịch sử của thời kỳ quá độ lên chủ nghĩa xã hội ở Việt Nam bao gồm hai nội dung lớn: + Xây dựng nền tảng vật chất và kỹ thuật cho chủ nghĩa xã hội, xây dựng các tiền đề về kinh tế, chính trị, văn hóa, tư tưởng cho chủ nghĩa xã hội + Cải tạo xã hội cũ, xây dựng xã hội mới, kết hợp cải tạo và xây dựng, trong đó lấy xây dựng làm trọng tâm, làm nội dung cốt yếu nhất, chủ chốt, lâu dài",
+        "[Chương III, trang 46] . Như vậy, quan niệm Hồ Chí Minh về thời kỳ quá độ lên chủ nghĩa xã hội ở Việt Nam là quan niệm về một hình thái quá độ gián tiếp cụ thể – quá độ từ một xã hội thuộc địa nửa phong kiến, nông nghiệp lạc hậu sau khi giành được độc lập dân tộc đi lên chủ nghĩa xã hội. Chính ở nội dung cụ thể này, Hồ Chí Minh đã cụ thể và làm phong phú thêm lý luận Mac – Lênin về thời kỳ quá độ lên chủ nghĩa xã hội. Theo Hồ Chí Minh, khi bước vào thời kỳ quá độ lên chủ nghĩa xã hội, nước ta có đặc điểm lớn nhất là từ một nước nông nghiệp lạc hậu tiến lên chủ nghĩa xã hội không phải kinh qua giai đoạn phát triển tư bản chủ nghĩa. Đặc điểm này chi phối các đặc điểm khác, thể hiện trong tất cả các lĩnh vực của đời sống xã hội và là cơ sở nảy sinh nhiều mâu thuẫn",
+        "[Chương III, trang 46] . Hồ Chí Minh nhấn mạnh đến tính chất tuần tự, dần dần của thời kỳ quá độ lên chủ nghĩa xã hội. Tính chất phức tạp và khó khăn của nó được Người lý giải trên các điểm sau: - Đây thực sự là một cuộc cách mạng làm đảo lộn mọi mặt đời sống xã hội, cả lực lượng sản xuất và quan hệ sản xuất, cả cơ sở hạ tầng và kiến trúc thượng tầng. Nó đặt ra và đòi hỏi đồng thời giải quyết hàng loạt mâu thuẫn khác nhau. Như trong Di chúc, Hồ Chí Minh đã coi sự nghiệp xây dựng chủ nghĩa xã hội là một cuộc chiến đấu khổng lồ của toàn Đảng, toàn dân Việt Nam.",
+        "[Chương III, trang 46] . Đặc điểm này chi phối các đặc điểm khác, thể hiện trong tất cả các lĩnh vực của đời sống xã hội và là cơ sở nảy sinh nhiều mâu thuẫn. Trong đó, Hồ Chí Minh đặc biệt lưu ý đến mâu thuẫn cơ bản của thời ký quá độ, đó là mâu thuẫn giữa nhu cầu phát triển cao của đất nước theo xu hướng tiến bộ và thực trạng kinh tế – xã hội quá thấp kém của nước ta. b. Nhiệm vụ lịch sử của thời kỳ quá độ lên chủ nghĩa xã hội ở Việt Nam Theo Hồ Chí Minh, thực chất của thời kỳ quá độ lên chủ nghĩa xã hội ở nước ta là quá trình cải biến nền sản xuất lạc hậu thành nền sản xuất tiên tiến, hiện đại"
+      ],
+      "blocked_by": null,
+      "retrieval": "pass",
+      "retrieval_top": 0.999,
+      "retrieval_top_cos": 0.821,
+      "scores": {
+        "faithfulness": null,
+        "response_groundedness": 1.0,
+        "answer_relevancy": 0.8305283804477837,
+        "context_relevance": 1.0,
+        "context_recall": null,
+        "answer_accuracy": 0.5
+      },
+      "score_errors": {
+        "faithfulness": "InstructorRetryException: <!DOCTYPE html PUBLIC \"-//W3C//DTD XHTML 1.0 Transitional//EN\" \"http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd\">\n<html>\n<!-- FileName: index.html\n     Language: [en]\n-->\n<!--Head-->\n<head>\n  ",
+        "context_recall": "InstructorRetryException: <!DOCTYPE html PUBLIC \"-//W3C//DTD XHTML 1.0 Transitional//EN\" \"http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd\">\n<html>\n<!-- FileName: index.html\n     Language: [en]\n-->\n<!--Head-->\n<head>\n  "
+      }
+    },
+    {
+      "id": 20,
+      "level": "hard",
+      "type": "not_in_corpus",
+      "question": "Theo giáo trình, Hồ Chí Minh đã đưa ra những chỉ dẫn cụ thể nào về phát triển kinh tế thị trường định hướng xã hội chủ nghĩa và hội nhập WTO?",
+      "expect": "refuse",
+      "reference": "",
+      "status": "refused",
+      "answer": "Giáo trình không đề cập nội dung này.",
+      "contexts": [],
+      "blocked_by": null,
+      "retrieval": "pass",
+      "retrieval_top": 0.918,
+      "retrieval_top_cos": 0.652
+    }
+  ]
+}
