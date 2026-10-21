@@ -1,7 +1,8 @@
 """
 Retrieve (Qdrant) → Rerank (Qwen3-Reranker) → Retrieval guardrail.
 
-  1. Qdrant lấy CANDIDATES chunk (lấy rộng, ưu tiên không bỏ sót).
+  1. Qdrant lấy CANDIDATES chunk (lấy rộng, ưu tiên không bỏ sót). Collection có sparse vector "bm25" (ingest mới)
+     → hybrid: top HYBRID_PREFETCH dense + top HYBRID_PREFETCH bm25, gộp RRF, lấy HYBRID_CANDIDATES chunk.
   2. Qwen3-Reranker chấm lại, giữ TOP_N chunk tốt nhất.
   2b. Chunk mở đầu bằng từ trỏ về đoạn trước ("Đây là…", "Do đó…") → ghép thêm chunk liền trước (attach_previous).
   3. Retrieval guardrail dựa trên chunk đứng đầu sau rerank — cần CẢ P(yes) VÀ cosine của nó:
@@ -14,6 +15,7 @@ Cấu hình qua .env (đều có giá trị mặc định):
   QDRANT_PATH=./qdrant_data          # HOẶC chế độ nhúng (không cần Docker) — đặt cái này thì bỏ qua URL
   QDRANT_COLLECTION=tu_tuong_hcm
   QDRANT_API_KEY=...                 # chỉ cần với Qdrant Cloud
+  HYBRID=0                           # tắt hybrid: chỉ dense, kể cả khi collection có bm25 (để so sánh)
 
 Payload mỗi point cần có key "text" (và nên có "chunk_id", "chapter", "chapter_no", "page").
 
@@ -25,10 +27,13 @@ import time
 import unicodedata
 from functools import lru_cache
 
+import numpy as np
+
 from dotenv import load_dotenv
 from langchain_ollama import OllamaEmbeddings
 from qdrant_client import QdrantClient, models
 
+from rag.bm25 import query_sparse
 from rag.reranker import Qwen3Reranker
 
 load_dotenv()
@@ -44,7 +49,11 @@ COLLECTION = os.getenv("QDRANT_COLLECTION", "tu_tuong_hcm")
 # Cấu hình nhẹ cho Mac mini M1 (xem giải thích trong chat).
 CANDIDATES = 10   # số chunk lấy từ Qdrant
 TOP_N = 4         # số chunk giữ lại sau rerank, đưa vào prompt cho LLM
-RERANK_MAX_LEN = 512
+# Hybrid search (dense + BM25 gộp RRF), chỉ chạy khi collection có sparse vector "bm25".
+HYBRID = os.getenv("HYBRID", "1") == "1"
+HYBRID_PREFETCH = 20     # mỗi nhánh (dense, bm25) lấy chừng này chunk trước khi gộp
+HYBRID_CANDIDATES = 15   # số chunk sau RRF đưa vào reranker
+RERANK_MAX_LEN = 768
 
 # Ngưỡng chọn từ calibrate.py (42 câu × 2 cách gõ): mọi câu giáo trình có P(yes) ≥ 0.97 và cosine ≥ 0.49,
 # câu lạc đề có cosine ≤ 0.43. Chỉ dùng P(yes) thì không tách được: reranker cho câu lạc đề
@@ -99,12 +108,42 @@ def load_pages(client: QdrantClient, first: int, last: int) -> list[dict]:
     return sorted(chunks, key=lambda c: (c.get("page") or 0, c.get("chunk_id", "")))
 
 
+@lru_cache(maxsize=None)
+def has_bm25(client: QdrantClient, collection: str) -> bool:
+    """Collection có sparse vector "bm25" (scripts/ingest.py mới) không. Hỏi Qdrant một lần mỗi collection."""
+    return "bm25" in (client.get_collection(collection).config.params.sparse_vectors or {})
+
+
+def retrieval_mode(client: QdrantClient, collection: str | None = None) -> str:
+    return "hybrid" if HYBRID and has_bm25(client, collection or COLLECTION) else "dense"
+
+
 def qdrant_search(client: QdrantClient, embedder, question: str,
-                  limit: int = CANDIDATES, query_filter: models.Filter | None = None) -> list[dict]:
-    """Trả về list dict chuẩn hoá {id, score, metadata} — đúng dạng reranker.rerank() cần."""
+                  limit: int | None = None, query_filter: models.Filter | None = None) -> list[dict]:
+    """Trả về list dict chuẩn hoá {id, score, metadata} — đúng dạng reranker.rerank() cần.
+    "score" LUÔN là cosine của vector dense (reranker ghi nó vào "cosine", retrieval_guard dùng), kể cả khi hybrid.
+    limit=None → HYBRID_CANDIDATES (hybrid) / CANDIDATES (dense)."""
     vector = embedder.embed_query(question)
+    if retrieval_mode(client) == "hybrid":
+        points = client.query_points(
+            collection_name=COLLECTION,
+            prefetch=[
+                models.Prefetch(query=vector, limit=HYBRID_PREFETCH, filter=query_filter),   # dense: vector không tên
+                models.Prefetch(query=query_sparse(question), using="bm25", limit=HYBRID_PREFETCH, filter=query_filter),
+            ],
+            query=models.FusionQuery(fusion=models.Fusion.RRF),
+            limit=limit or HYBRID_CANDIDATES, with_payload=True, with_vectors=[""],
+        ).points
+        # p.score lúc này là điểm RRF, không phải cosine → tính lại. Distance Cosine: Qdrant lưu vector đã chuẩn hoá,
+        # nên dot với câu hỏi đã chuẩn hoá = cosine (chunk chỉ nhánh bm25 tìm thấy cũng có cosine thật).
+        qn = np.asarray(vector) / np.linalg.norm(vector)
+        return [
+            {"id": p.payload.get("chunk_id", str(p.id)), "score": float(np.dot(p.vector, qn)), "rrf": p.score,
+             "metadata": p.payload}
+            for p in points
+        ]
     points = client.query_points(
-        collection_name=COLLECTION, query=vector, limit=limit,
+        collection_name=COLLECTION, query=vector, limit=limit or CANDIDATES,
         query_filter=query_filter, with_payload=True,
     ).points
     return [
@@ -180,7 +219,7 @@ class Retriever:
         self.embedder = OllamaEmbeddings(model=EMBED_MODEL, num_ctx=EMBED_NUM_CTX,
                                          keep_alive=-1,   # giữ model trong RAM
                                          client_kwargs={"timeout": EMBED_TIMEOUT})
-        self.reranker = Qwen3Reranker(max_length=RERANK_MAX_LEN, batch_size=CANDIDATES)
+        self.reranker = Qwen3Reranker(max_length=RERANK_MAX_LEN, batch_size=max(CANDIDATES, HYBRID_CANDIDATES))
 
     def warmup(self):
         """Lần chạy đầu trên GPU Apple (MPS) rất chậm vì biên dịch kernel — làm trước khi nhận request."""

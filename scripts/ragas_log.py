@@ -120,8 +120,10 @@ def detail(run: dict) -> list[str]:
            f"- **File:** `data/eval_runs/{run['name']}.json`",
            f"- **Model trả lời:** `{c.get('gemini_model', '?')}` · **giám khảo:** `{c.get('judge_model', '?')}`"
            + ("" if c.get("judge_model") != c.get("gemini_model") else " ⚠️ trùng model trả lời (tự chấm mình)"),
-           "- **Retrieval:** " + " · ".join(f"{k}={c[k]}" for k in ("CANDIDATES", "TOP_N", "MIN_TOP", "MIN_COS",
-                                                                     "PARTIAL_BAND", "PARTIAL_COS", "ATTACH_PREVIOUS") if k in c),
+           "- **Retrieval:** " + " · ".join(f"{k}={c[k]}" for k in ("COLLECTION", "RETRIEVAL", "CANDIDATES",
+                                                                     "HYBRID_PREFETCH", "HYBRID_CANDIDATES", "TOP_N",
+                                                                     "MIN_TOP", "MIN_COS", "PARTIAL_BAND", "PARTIAL_COS",
+                                                                     "ATTACH_PREVIOUS") if k in c),
            f"- **Kết quả:** {len(rows)} câu — " + ", ".join(f"{n[s]} {STATUS[s]}" for s in STATUS if n[s])]
     if unlabeled:
         out.append("- ℹ️ Đoạn giáo trình đưa giám khảo **chưa có nhãn trang** (câu trả lời chạy trước 14/10 / chấm lại từ file đó): faithfulness thấp hơn thật "
