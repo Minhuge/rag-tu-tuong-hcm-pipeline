@@ -1,0 +1,41 @@
+{
+  "collection": "tu_tuong_hcm_ms1600",
+  "created_at": "2026-10-21T09:41:16",
+  "embed_model": "qwen3-embedding:4b",
+  "embed_num_ctx": 1024,
+  "n_points": 330,
+  "n_chunks": 330,
+  "len_percentiles": {
+    "p5": 423,
+    "p25": 744,
+    "p50": 1134,
+    "p75": 1463,
+    "p95": 1570
+  },
+  "len_max": 1596,
+  "len_mean": 1078.9,
+  "by_method": {
+    "whole_section": 36,
+    "semantic": 294
+  },
+  "n_over_max": 0,
+  "n_under_min": 12,
+  "n_cross_page": 104,
+  "n_unbalanced_quotes": 39,
+  "n_lowercase_start": 6,
+  "embed_text_max_chars": 1907,
+  "strategy": "hier_semantic",
+  "max_size": 1600,
+  "min_size": 400,
+  "semantic_pct": 90,
+  "semantic_thr": 0.2459,
+  "n_sections": 118,
+  "n_sections_after_intro_merge": 114,
+  "n_intros_merged": 4,
+  "n_sections_split": 78,
+  "embed_text_max_tokens": 616,
+  "embed_text_tokens_p95": 574,
+  "text_max_tokens": 483,
+  "n_embed_text_over_ctx": 0,
+  "bm25_avgdl": 474.69
+}

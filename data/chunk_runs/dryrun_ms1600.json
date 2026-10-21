@@ -1,0 +1,31 @@
+{
+  "n_chunks": 330,
+  "len_percentiles": {
+    "p5": 423,
+    "p25": 744,
+    "p50": 1134,
+    "p75": 1463,
+    "p95": 1570
+  },
+  "len_max": 1596,
+  "len_mean": 1078.9,
+  "by_method": {
+    "whole_section": 36,
+    "semantic": 294
+  },
+  "n_over_max": 0,
+  "n_under_min": 12,
+  "n_cross_page": 104,
+  "n_unbalanced_quotes": 39,
+  "n_lowercase_start": 6,
+  "embed_text_max_chars": 1907,
+  "strategy": "hier_semantic",
+  "max_size": 1600,
+  "min_size": 400,
+  "semantic_pct": 90,
+  "semantic_thr": 0.2459,
+  "n_sections": 118,
+  "n_sections_after_intro_merge": 114,
+  "n_intros_merged": 4,
+  "n_sections_split": 78
+}
