@@ -1,0 +1,47 @@
+{
+  "config": {
+    "gemini_model": "gemini-3.6-flash",
+    "judge_model": "deepseek-v4-pro",
+    "CANDIDATES": 10,
+    "TOP_N": 4,
+    "MIN_TOP": 0.9,
+    "MIN_COS": 0.45,
+    "PARTIAL_BAND": 0.5,
+    "PARTIAL_COS": 0.4,
+    "ATTACH_PREVIOUS": false
+  },
+  "rows": [
+    {
+      "id": 1,
+      "level": "easy",
+      "type": "factual",
+      "question": "Hồ Chí Minh sinh ngày, tháng, năm nào và trong gia đình như thế nào?",
+      "expect": "answer",
+      "reference": "Hồ Chí Minh sinh ngày 19 tháng 5 năm 1890 trong một gia đình nhà nho yêu nước, gần gũi với nhân dân; thân sinh là cụ phó bảng Nguyễn Sinh Sắc.",
+      "status": "answered",
+      "answer": "Hồ Chí Minh sinh ngày 19 tháng 5 năm 1890 trong một gia đình nhà nho yêu nước, gần gũi với nhân dân [Chương I, trang 12].",
+      "contexts": [
+        "[Chương I, trang 12] Hồ Chí Minh sinh ngày 19 tháng 5 năm 1890 trong một gia đình nhà nho yêu nước, gần\ngũi với nhân dân. Cụ phó bảng Nguyễn Sinh Sắc, thân sinh của Người, là một nhà nho cấp tiến,\ncó lòng yêu nước, thương dân sâu sắc. Tấm gương lao động cấn cù, ý chí kiên cường vượt qua\ngian khổ để đạt được mục tiêu, đặc biệt là tư tưởng thân dân, lấy dân làm hậu thuẫn cho các cải\ncách chính trị - xã hội của Cụ Phó bảng đã có ảnh hưởng sâu sắc đối với quá trình hình thành\nnhân cách của Nguyễn Tất Thành.\nSau này, những kiến thức học được từ người cha, những tư tưởng mới của thời đại đã\nđược Hồ Chí Minh nâng lên thành tư tưởng cốt lõi trong đường lối chính trị của mình.\nCuộc sống của người mẹ - bà Hoàng Thị Loan – cũng ảnh hưởng đến tư tưởng, tình cảm\ncủa Nguyễn Sinh Cung về đức tính nhân hậu, đảm đang, sống nhan hòa với mọi người.\nCòn phải kể tới mối quan hệ và tác động qua lại giữa ba chị em Nguyễn Thị Thanh\n(Nguyễn Thị Bạch Liên ), Nguyễn Sinh Khiêm (Nguyễn Tất Đạt) và Nguyễn Sinh Cung\n(Nguyễn Tất Thành ) về lòng yêu nước thương nòi.\nNghệ Tĩnh là vùng đất vừa giàu truyền thống văn hóa, vừa giàu truyền thống lao động,\nđấu tranh chống ngoại xâm.",
+        "[Chương VII, trang 111] Gia đình của Người là đại gia\nđình Việt Nam”.\nLà lãnh tụ cách mạng, Hồ Chí Minh luôn coi khinh mọi sự xa hoa, không ưa chuộng\nnhững nghi thức trang trọng cầu kỳ, suốt đời giữ một nếp sống thanh bạch, tao nhã, giản dị,\nkhiêm tốn, khắc khổ, cần lao và tranh đấu để mưu cầu hạnh phúc cho dân. Toàn thể nhân dân\nViệt Nam vả thế giới đều biết, bộ kaki bạc màu, đôi dép lốp mòn, cái nhà sàn gỗ đơn sơ của chủ\ntịch Hồ Chí Minh… nói về những đức tính vĩ đại của Hồ Chí Minh, X.Agienđê – Vị tổng thống\nanh hùng của nước cộng hòa Chilê đã khái quát: “Nếu như muốn tìm một sự tiêu biểu cho tất cả\ncuộc đời của chủ tịch Hồ Chí Minh thì đó là đức tính vô cùng giản dị và sự khiêm tốn phi\nthường”\n+ Học đức tin tuyệt đối vào sức mạnh của nhân dân, kính trọng nhân dân và hết lòng hết\nsức phục vụ nhân dân; luôn nhân ái, vị tha, khoan dung và nhân hậu với con người.\nHồ Chí Minh có tình thương yêu bao la đối với con người.",
+        "[Chương Mở đầu, trang 4] Hồ Chí Minh là người cộng sản đầu tiên của Việt Nam; người sáng lập, giáo dục, rèn\nluyện và là lãnh tụ của Đảng Cộng sản Việt Nam. Bản thân Hồ Chí Minh là người tìm kiếm, lựa\nchọn con đường, vạch ra đường lối cách mạng đúng đắn cho dân tộc và lãnh đạo sự nghiệp cách\nmạng Việt Nam theo mục tiêu độc lập dân tộc gắn liền với chủ nghĩa xã hội. Trong quan hệ với\nmôn học Đường lối cách mạng của Đảng Cộng Sản Việt Nam, tư tưởng Hồ Chí Minh là một bộ\nphận tư tưởng của Đảng, nhưng với tư cách là bộ phận nền tảng tư tưởng, kim chỉ nam hành\nđộng của Đảng, là cơ sở khoa học cùng với chủ nghĩa Mac – Lênin để xây dựng đường lối, chiến\nlược, sách lược cách mạng đúng đắn. Như vậy, môn học tư tưởng Hồ Chí Minh gắn bó chặt chẽ\nvới môn học Đường lối cách mạng của Đảng Cộng sản Việt Nam. Nghiên cứu, giảng dạy, học\ntập tư tưởng Hồ Chí Minh nhằm trang bị cơ sở thế giới quan, phương pháp luận khoa học để nắm\nvững kiến thức về đường lối cách mạng của Đảng Cộng sản Vệt Nam.",
+        "[Chương I, trang 8] - Bối cảnh lịch sử Việt Nam cuối thế kỷ XIX đầu thế kỷ XX\nHồ Chí Minh sinh ra và lớn lên trong hoàn cảnh đất nước và thế giới có nhiều biến động.\nTrong nước, chính quyền triều Nguyễn đã từng bước khuất phục trước cuộc xâm lược của\ntư bản Pháp, lần lượt ký kết các hiệp ước đầu hàng, thừa nhận nền bảo hộ của thực dân Pháp trên\ntoàn cõi Việt Nam."
+      ],
+      "blocked_by": null,
+      "retrieval": "pass",
+      "retrieval_top": 0.998,
+      "retrieval_top_cos": 0.667,
+      "scores": {
+        "faithfulness": null,
+        "response_groundedness": 1.0,
+        "answer_relevancy": 0.8995746644123318,
+        "context_relevance": 1.0,
+        "context_recall": null,
+        "answer_accuracy": 0.75
+      },
+      "score_errors": {
+        "faithfulness": "InstructorRetryException: <!DOCTYPE html PUBLIC \"-//W3C//DTD XHTML 1.0 Transitional//EN\" \"http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd\">\n<html>\n<!-- FileName: index.html\n     Language: [en]\n-->\n<!--Head-->\n<head>\n  ",
+        "context_recall": "InstructorRetryException: <!DOCTYPE html PUBLIC \"-//W3C//DTD XHTML 1.0 Transitional//EN\" \"http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd\">\n<html>\n<!-- FileName: index.html\n     Language: [en]\n-->\n<!--Head-->\n<head>\n  "
+      }
+    }
+  ]
+}
