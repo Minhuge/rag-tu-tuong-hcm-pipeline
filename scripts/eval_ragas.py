@@ -21,6 +21,8 @@
   5. Dựng lại nhật ký data/eval_runs/RAGAS_LOG.md từ mọi lần chạy (scripts/ragas_log.py): bảng tổng quan + chi tiết
 
 Chạy:  python -m scripts.eval_ragas                          # toàn bộ testset (nạp model + gọi Gemini)
+       QDRANT_COLLECTION=tu_tuong_hcm_ms1200 python -m scripts.eval_ragas
+
        python -m scripts.eval_ragas --limit 3                # thử nhanh 3 câu đầu
        python -m scripts.eval_ragas --expect answer          # chỉ các câu giáo trình (bỏ câu cần từ chối)
        python -m scripts.eval_ragas --rescore data/eval_runs/<ngày-giờ>.json   20261014-093503.json : chấm lại
@@ -197,10 +199,14 @@ def report(rows: list[dict]):
         print(f"\n{errs} lần chấm lỗi — xem 'score_errors' trong file kết quả.")
 
 
-def config_snapshot() -> dict:
+def config_snapshot(client) -> dict:
+    mode = search_rerank.retrieval_mode(client)
     return {"gemini_model": GEMINI_MODEL, "judge_model": JUDGE_MODEL,
+            "COLLECTION": search_rerank.COLLECTION, "RETRIEVAL": mode,
             **{k: getattr(search_rerank, k) for k in ("CANDIDATES", "TOP_N", "MIN_TOP", "MIN_COS",
-                                                       "PARTIAL_BAND", "PARTIAL_COS", "ATTACH_PREVIOUS")}}
+                                                       "PARTIAL_BAND", "PARTIAL_COS", "ATTACH_PREVIOUS")},
+            **({k: getattr(search_rerank, k) for k in ("HYBRID_PREFETCH", "HYBRID_CANDIDATES")}
+               if mode == "hybrid" else {})}
 
 
 def pick_low(run_file: str, metric: str, below: float, testset: list[dict]) -> list[dict]:
@@ -256,7 +262,7 @@ async def main():
         print(f"Nạp model... (giám khảo: {JUDGE_MODEL})")
         rag = GuardedRAG()
         await asyncio.to_thread(rag.warmup)
-        rows, config = await run_pipeline(rag, items), config_snapshot()
+        rows, config = await run_pipeline(rag, items), config_snapshot(rag.retriever.client)
         if args.rerun:
             config["rerun_of"] = {"file": os.path.basename(args.rerun), "metric": args.metric, "below": args.below}
         embedder = rag.retriever.embedder

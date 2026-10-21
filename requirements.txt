@@ -6,6 +6,8 @@ langchain-ollama==1.1.0
 langchain-text-splitters==1.1.2
 pypdf==6.19.0
 python-dotenv==1.2.3
+pymupdf==1.26.5            # rag/chunking.py: đọc PDF giữ nguyên dòng
+underthesea==9.5.0         # rag/chunking.py: tách câu cho bước semantic
 
 # Vector DB
 qdrant-client>=1.10

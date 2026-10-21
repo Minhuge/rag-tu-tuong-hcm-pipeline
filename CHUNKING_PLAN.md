@@ -2,7 +2,8 @@
 
 Tài liệu này mô tả:
 
-1. Cấu trúc pipeline chunking mới, thay cho `RecursiveCharacterTextSplitter(800, 100)` hiện tại.
+1. Cấu trúc pipeline chunking mới, thay cho `RecursiveCharacterTextSplitter(800, 300)` hiện tại (collection
+   `tu_tuong_hcm`, 708 chunk).
 2. Thí nghiệm chọn `max_size`: thống kê độ dài mục, chọn giá trị, ingest vào các collection riêng, hiệu chỉnh và
    đánh giá để chọn bản tốt nhất.
 
@@ -338,6 +339,11 @@ QDRANT_COLLECTION=tu_tuong_hcm python -m scripts.eval_ragas      # lưu vào dat
 
 Chạy **trước** khi sửa bất kỳ phần nào của pipeline truy vấn.
 
+Baseline là **Recursive 800/300** (`scripts/ingest.py --strategy legacy`, `chunk_documents(chunk_overlap=300)`),
+708 chunk. Với overlap 100 thì chỉ có 585 chunk; con số này là của bản cũ hơn. Khi so kết quả, nhớ rằng overlap
+lớn giúp baseline có `context_recall` khá cao (cùng một ý xuất hiện ở nhiều chunk), nhưng đổi lại top 4 hay có
+nhiều chunk trùng nội dung.
+
 ### 4.2 Thống kê độ dài mục (đã chạy)
 
 `python -m rag.chunking data/Giao_trinh_Tu_tuong_HCM.pdf`
@@ -394,7 +400,8 @@ luôn bằng 118.
 **Vì sao là 800 / 1200 / 1600.** Ba số này không tính ra từ công thức. Đây là 3 điểm lấy mẫu trong một khoảng hợp
 lý; eval mới là thứ quyết định.
 
-- **800 (đáy):** bằng baseline 800/100, nên so sánh được công bằng. Độ dài chunk tương đương, chỉ khác cách cắt.
+- **800 (đáy):** cùng `chunk_size` với baseline 800/300, nên độ dài chunk tương đương. Khác ở cách cắt và ở overlap:
+  baseline chồng 300 ký tự (khoảng 37%), chunking v2 không overlap (trừ bước recursive, `max_size // 8`).
 - **1600 (trần):** khoảng 450–550 token, top 4 khoảng 6.400 ký tự context. Vẫn trong khoảng thường dùng cho RAG
   văn bản, và xa giới hạn cứng ở mục 3.
 - **1200 (giữa):** chia đều khoảng 800–1600. Bước nhảy 400 đủ thưa để khác biệt không lẫn vào nhiễu eval, đủ dày
@@ -449,9 +456,9 @@ done
 
 ### 4.6 So sánh và chọn
 
-| Chỉ số | baseline 800/100 | ms800 | ms1200 | ms1600 | ms1200_nosem |
+| Chỉ số | baseline 800/300 | ms800 | ms1200 | ms1600 | ms1200_nosem |
 |---|---|---|---|---|---|
-| Số chunk | 585 | | | | |
+| Số chunk | 708 | | | | |
 | Độ dài chunk p50 / p95 | | | | | |
 | % chunk semantic / recursive / whole | — | | | | |
 | `context_recall` | | | | | |

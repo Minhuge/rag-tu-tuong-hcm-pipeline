@@ -10,15 +10,26 @@ rồi in điểm từng câu và ngưỡng tách 2 nhóm tốt nhất cho:
   cos_max   — cosine cao nhất trong 10 chunk Qdrant trả về
   rerank + cos_top — luật kết hợp: rerank ≥ a VÀ cos_top ≥ b
 
-Chạy:  uvicorn app.main:app   (terminal khác)
+API cần đăng nhập: script hỏi email + mật khẩu (nhập ẩn) rồi gọi /auth/login; hoặc đặt CALIBRATE_EMAIL /
+CALIBRATE_PASSWORD trong .env (không commit). Access token chỉ sống ACCESS_TOKEN_MINUTES phút → hết hạn giữa chừng thì tự đăng
+nhập lại. Collection do API quyết định: đặt QDRANT_COLLECTION cho lệnh uvicorn, không phải cho lệnh này.
+
+Chạy:  QDRANT_COLLECTION=tu_tuong_hcm_ms1200 uvicorn app.main:app   (terminal khác)
        python -m scripts.calibrate                 # câu hỏi như đã viết
        python -m scripts.calibrate --variants      # thêm bản viết thường, bỏ dấu "?" để xem điểm dao động
        python -m scripts.calibrate --csv out.csv   # lưu điểm thô
 """
 import argparse
 import csv
+import getpass
 import json
+import os
+import urllib.error
 import urllib.request
+
+from dotenv import load_dotenv
+
+load_dotenv()   # CALIBRATE_EMAIL / CALIBRATE_PASSWORD trong .env
 
 API = "http://localhost:8000"
 
@@ -74,12 +85,38 @@ OFF_TOPIC = [
 ]
 
 
-def search(question: str) -> dict:
-    req = urllib.request.Request(
-        f"{API}/search", method="POST", headers={"Content-Type": "application/json"},
-        data=json.dumps({"question": question, "top_n": 10}).encode())
-    with urllib.request.urlopen(req, timeout=120) as r:
-        return json.load(r)
+class Session:
+    """Đăng nhập API một lần; token hết hạn (401) thì đăng nhập lại bằng thông tin đã nhập."""
+
+    def __init__(self, email: str, password: str):
+        self.email, self.password, self.token = email, password, None
+
+    def login(self) -> None:
+        req = urllib.request.Request(
+            f"{API}/auth/login", method="POST", headers={"Content-Type": "application/json"},
+            data=json.dumps({"email": self.email, "password": self.password}).encode())
+        try:
+            with urllib.request.urlopen(req, timeout=30) as r:
+                self.token = json.load(r)["access_token"]
+        except urllib.error.HTTPError as e:
+            raise SystemExit(f"Đăng nhập thất bại ({e.code}): kiểm tra email / mật khẩu. "
+                             f"Chưa có tài khoản: python -m scripts.create_user <email>") from e
+
+    def search(self, question: str) -> dict:
+        for attempt in range(2):
+            if self.token is None:
+                self.login()
+            req = urllib.request.Request(
+                f"{API}/search", method="POST",
+                headers={"Content-Type": "application/json", "Authorization": f"Bearer {self.token}"},
+                data=json.dumps({"question": question, "top_n": 10}).encode())
+            try:
+                with urllib.request.urlopen(req, timeout=120) as r:
+                    return json.load(r)
+            except urllib.error.HTTPError as e:
+                if e.code != 401 or attempt:
+                    raise
+                self.token = None   # token hết hạn → đăng nhập lại rồi thử lần nữa
 
 
 def variant(q: str) -> str:
@@ -117,6 +154,10 @@ def main():
     ap.add_argument("--csv", help="lưu điểm thô ra file CSV")
     args = ap.parse_args()
 
+    email = os.getenv("CALIBRATE_EMAIL") or input("Email đăng nhập API: ").strip()
+    session = Session(email, os.getenv("CALIBRATE_PASSWORD") or getpass.getpass("Mật khẩu: "))
+    session.login()
+
     jobs = [(q, True) for q in IN_COURSE] + [(q, False) for q in OFF_TOPIC]
     if args.variants:
         jobs += [(variant(q), ic) for q, ic in jobs]
@@ -124,7 +165,7 @@ def main():
     rows = []
     print(f"{'nhóm':<4} {'rerank':>6} {'cos_top':>7} {'cos_max':>7} {'lớp 2':<8} câu hỏi → chunk đầu")
     for i, (q, in_course) in enumerate(jobs, 1):
-        d = search(q)
+        d = session.search(q)
         top = d["results"][0] if d["results"] else None
         row = {
             "question": q, "in_course": in_course, "decision": d["retrieval"],

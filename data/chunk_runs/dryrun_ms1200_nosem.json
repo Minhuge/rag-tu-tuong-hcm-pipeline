@@ -1,0 +1,31 @@
+{
+  "n_chunks": 382,
+  "len_percentiles": {
+    "p5": 429,
+    "p25": 889,
+    "p50": 1051,
+    "p75": 1141,
+    "p95": 1185
+  },
+  "len_max": 1199,
+  "len_mean": 966.1,
+  "by_method": {
+    "whole_section": 28,
+    "recursive": 354
+  },
+  "n_over_max": 0,
+  "n_under_min": 6,
+  "n_cross_page": 103,
+  "n_unbalanced_quotes": 54,
+  "n_lowercase_start": 6,
+  "embed_text_max_chars": 1493,
+  "strategy": "recursive",
+  "max_size": 1200,
+  "min_size": 300,
+  "semantic_pct": null,
+  "semantic_thr": null,
+  "n_sections": 118,
+  "n_sections_after_intro_merge": 114,
+  "n_intros_merged": 4,
+  "n_sections_split": 86
+}

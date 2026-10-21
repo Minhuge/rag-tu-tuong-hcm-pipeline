@@ -37,3 +37,6 @@ chat.db-*
 
 # Kết quả chạy thử script prototype (gen_exam_proto, grade_essay_proto)
 outputs/
+
+# Cache embedding câu của chunking v2 (~20 MB, tạo lại được bằng python -m rag.chunking --dry-run)
+data/chunk_runs/*.npz
