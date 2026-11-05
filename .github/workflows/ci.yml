@@ -1,0 +1,86 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:        # cho phép bấm chạy tay trên tab Actions
+    inputs:
+      run_eval:
+        description: "Chạy thêm RAGAS eval (dùng Ollama + Qdrant + Gemini thật)"
+        type: boolean
+        default: false
+
+jobs:
+  backend:
+    runs-on: [self-hosted, rag]      # khớp label đặt lúc config runner
+    env:
+      JWT_SECRET: ci-test-secret-not-for-prod
+      GEMINI_API_KEY: dummy
+      QDRANT_PATH: ":memory:"
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Cài dependencies
+        run: pip install -r requirements.txt
+
+      - name: Chạy pytest
+        run: pytest -q
+
+  frontend:
+    runs-on: [self-hosted, rag]
+    defaults:
+      run:
+        working-directory: web
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+
+      - run: npm ci
+      - run: npx oxlint
+      - run: npm run typecheck
+      - run: npm run build
+
+  # Chỉ chạy khi bấm tay và tick run_eval — dùng GPU, Ollama, Qdrant có sẵn trên máy
+  eval:
+    if: github.event_name == 'workflow_dispatch' && inputs.run_eval
+    needs: backend
+    runs-on: [self-hosted, rag]
+    env:
+      GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+      JWT_SECRET: ci-test-secret-not-for-prod
+      OLLAMA_HOST: http://localhost:11434
+      QDRANT_URL: http://localhost:6333
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - run: pip install -r requirements.txt
+
+      - name: Kiểm tra dịch vụ local đang chạy
+        run: |
+          curl -sf http://localhost:11434/api/tags > /dev/null || (echo "Ollama chưa chạy" && exit 1)
+          curl -sf http://localhost:6333/collections > /dev/null || (echo "Qdrant chưa chạy" && exit 1)
+
+      - name: Chạy RAGAS eval
+        run: python -m scripts.eval_ragas
+
+      - name: Lưu kết quả eval lên GitHub
+        uses: actions/upload-artifact@v4
+        with:
+          name: eval-results
+          path: data/eval_runs/
