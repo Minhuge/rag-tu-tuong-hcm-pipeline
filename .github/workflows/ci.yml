@@ -1,0 +1,90 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+    inputs:
+      run_eval:
+        description: "Chạy thêm RAGAS eval (dùng Ollama + Qdrant + Gemini thật)"
+        type: boolean
+        default: false
+
+env:
+  # venv cố định trên Mac, giữ lại giữa các lần chạy -> không cài lại torch mỗi lần
+  CI_VENV: ${{ github.workspace }}/../../_ci_venv
+  PYTHON: /Users/pmhieu7/.local/bin/python3.12   # Python từ Homebrew, không dùng bản 3.9 của macOS
+
+jobs:
+  backend:
+    runs-on: [self-hosted, rag]
+    env:
+      JWT_SECRET: ci-test-secret-not-for-prod
+      GEMINI_API_KEY: dummy
+      QDRANT_PATH: ":memory:"
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Kiểm tra Python có sẵn trên máy
+        run: |
+          "$PYTHON" --version
+
+      - name: Tạo / dùng lại venv và cài dependencies
+        run: |
+          [ -d "$CI_VENV" ] || "$PYTHON" -m venv "$CI_VENV"
+          source "$CI_VENV/bin/activate"
+          pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Chạy pytest
+        run: |
+          source "$CI_VENV/bin/activate"
+          pytest -q
+
+  frontend:
+    runs-on: [self-hosted, rag]
+    defaults:
+      run:
+        working-directory: web
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Kiểm tra Node có sẵn trên máy
+        run: |
+          which node
+          node -v
+          npm -v
+
+      - run: npm ci
+      - run: npx oxlint
+      - run: npm run typecheck
+      - run: npm run build
+
+  eval:
+    if: github.event_name == 'workflow_dispatch' && inputs.run_eval
+    needs: backend
+    runs-on: [self-hosted, rag]
+    env:
+      GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+      JWT_SECRET: ci-test-secret-not-for-prod
+      OLLAMA_HOST: http://localhost:11434
+      QDRANT_URL: http://localhost:6333
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Kiểm tra dịch vụ local đang chạy
+        run: |
+          curl -sf http://localhost:11434/api/tags > /dev/null || (echo "Ollama chưa chạy" && exit 1)
+          curl -sf http://localhost:6333/collections > /dev/null || (echo "Qdrant chưa chạy" && exit 1)
+
+      - name: Chạy RAGAS eval
+        run: |
+          source "$CI_VENV/bin/activate"
+          python -m scripts.eval_ragas
+
+      - name: Lưu kết quả eval lên GitHub
+        uses: actions/upload-artifact@v4
+        with:
+          name: eval-results
+          path: data/eval_runs/
